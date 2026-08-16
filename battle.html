@@ -2,11 +2,14 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>バトル - わくわく学習＆カード</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase_client.js"></script>
     <script src="js/data_manager.js"></script>
     <script src="js/auth_controller.js"></script>
+    <!-- 共通カードデータを読み込み -->
+    <script src="js/cards_data.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'M PLUS Rounded 1c', sans-serif; margin: 0; padding: 10px; text-align: center; min-height: 100vh; }
@@ -81,8 +84,8 @@
                 </div>
                 <div class="tcg-card" id="player-card">
                     <div class="tcg-card-name" id="active-card-name">カード名</div>
-                    <div class="tcg-card-img" id="active-card-img">🦸‍♂️</div>
-                    <div style="font-size: 9px; font-weight:bold; color:#333;">POWER: <span id="active-card-power">50</span></div>
+                    <div class="tcg-card-img" id="active-card-img">🐥</div>
+                    <div style="font-size: 9px; font-weight:bold; color:#333;">POWER: <span id="active-card-power">30</span></div>
                     <div id="player-defense-badge" style="display:none; position:absolute; top:-8px; left:-8px; font-size:18px;">🛡️</div>
                 </div>
             </div>
@@ -115,9 +118,7 @@
         document.getElementById('body-battle').className = localStorage.getItem('theme') || 'dark';
         let coins = parseInt(localStorage.getItem('coins')) || 100;
         let packs = parseInt(localStorage.getItem('packs')) || 0;
-        let activeDeck = JSON.parse(localStorage.getItem('activeDeck')) || [1,2,3];
-        const emojis = ["🦸‍♂️","🐉","🛡️","🔥","💧","⚡","👑","💎","🤖","👻","🦊","🐯","🐸","🦅","🦈","🦄","🌟","🚀","🎯","🎨"];
-        const masterCards = Array.from({length: 20}, (_, i) => ({ id: i + 1, name: `カードNo.${i + 1}`, img: emojis[i], power: 35 + (i * 3) }));
+        let activeDeck = JSON.parse(localStorage.getItem('activeDeck')) || [];
 
         let battleState = {};
         let audioCtx = null;
@@ -152,6 +153,12 @@
         }
 
         function startCardBattle(diff) {
+            // デッキが未設定または所持カードがない場合のフォールバック設定
+            let currentDeck = activeDeck.length > 0 ? activeDeck : getPlayerCollection();
+            if (currentDeck.length === 0) {
+                currentDeck = [1, 2, 3]; // 万が一カードを全く持っていない場合のデフォルト
+            }
+
             document.getElementById('battle-prep-screen').style.display = 'none';
             document.getElementById('battle-action-screen').style.display = 'block';
             startPokemonBGM();
@@ -160,19 +167,19 @@
                 enemyMaxHp: diff === 'hard' ? 250 : diff === 'normal' ? 180 : 120,
                 enemyHp: diff === 'hard' ? 250 : diff === 'normal' ? 180 : 120,
                 enemyEnergy: 0, enemyDefending: false,
-                deck: [...activeDeck].sort(() => Math.random() - 0.5),
+                deck: [...currentDeck].sort(() => Math.random() - 0.5),
                 hand: [], activeCard: null,
                 playerMaxHp: 100, playerHp: 100, playerEnergy: 0, playerDefending: false,
                 turnState: 'player'
             };
 
-            while(battleState.deck.length < 3) battleState.deck.push(...activeDeck);
+            while(battleState.deck.length < 3) battleState.deck.push(...currentDeck);
             battleState.deck.sort(() => Math.random() - 0.5);
 
             for (let i = 0; i < Math.min(2, battleState.deck.length); i++) {
                 battleState.hand.push(battleState.deck.pop());
             }
-            setCardToActive(battleState.deck.pop() || activeDeck[0]);
+            setCardToActive(battleState.deck.pop() || currentDeck[0]);
             startPlayerTurn();
         }
 
@@ -184,7 +191,7 @@
         }
 
         function setCardToActive(cardId) {
-            let rawCard = masterCards.find(c => c.id === cardId);
+            let rawCard = MASTER_CARDS.find(c => c.id === cardId) || MASTER_CARDS[0];
             battleState.activeCard = { ...rawCard };
             battleState.playerMaxHp = 60 + Math.floor(rawCard.power * 0.8);
             battleState.playerHp = battleState.playerMaxHp;
@@ -198,7 +205,7 @@
             document.getElementById('enemy-defense-badge').style.display = battleState.enemyDefending ? 'block' : 'none';
 
             if (battleState.activeCard) {
-                document.getElementById('active-card-img').innerText = battleState.activeCard.img;
+                document.getElementById('active-card-img').innerText = battleState.activeCard.icon;
                 document.getElementById('active-card-name').innerText = battleState.activeCard.name;
                 document.getElementById('active-card-power').innerText = battleState.activeCard.power;
                 document.getElementById('player-hp-text').innerText = battleState.playerHp;
@@ -213,10 +220,12 @@
             let isP = (battleState.turnState === 'player');
 
             battleState.hand.forEach((cardId, index) => {
-                let cObj = masterCards.find(c => c.id === cardId);
+                let cObj = MASTER_CARDS.find(c => c.id === cardId);
+                if (!cObj) return;
+
                 let div = document.createElement('div');
                 div.className = 'hand-card';
-                div.innerHTML = `<div style="font-size:14px;">${cObj.img}</div><div style="font-size:7px; font-weight:bold;">${cObj.name}</div>`;
+                div.innerHTML = `<div style="font-size:14px;">${cObj.icon}</div><div style="font-size:7px; font-weight:bold;">${cObj.name}</div>`;
                 if (isP && battleState.playerEnergy >= 1) {
                     div.onclick = () => switchCardFromHand(index);
                 } else { div.style.opacity = "0.5"; }
