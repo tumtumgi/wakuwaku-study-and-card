@@ -3,162 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <title>🌟 わくわく学習＆カード 🌟</title>
+
+    <!-- Supabase関連の読み込み -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase_client.js"></script>
     <script src="js/data_manager.js"></script>
     <script src="js/auth_controller.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'M PLUS Rounded 1c', sans-serif;
-            margin: 0; padding: 20px; color: #4a4a4a; text-align: center; min-height: 100vh;
-            transition: background 0.5s ease;
-        }
-        body.dark { background: linear-gradient(135deg, #1e272e 0%, #4bcffa 100%); }
-        body.pop { background: linear-gradient(135deg, #ff9ff3 0%, #feca57 100%); }
-        h1 { color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
-        .screen {
-            background: rgba(255, 255, 255, 0.95); max-width: 650px; margin: 0 auto;
-            padding: 25px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-        }
-        button {
-            background: linear-gradient(180deg, #ff6b81, #ff4757); color: white; border: none;
-            padding: 12px 24px; margin: 8px; font-size: 18px; font-family: 'M PLUS Rounded 1c', sans-serif;
-            font-weight: 700; border-radius: 50px; cursor: pointer; box-shadow: 0 6px 0 #c23616;
-            transition: all 0.1s; width: 80%;
-        }
-        button:hover { filter: brightness(1.1); transform: translateY(-2px); }
-        button:active { transform: translateY(4px); box-shadow: 0 2px 0 #c23616; }
-        .setting-btn {
-            width: 45%; font-size: 14px; padding: 8px 12px; margin: 4px;
-            background: #576574; box-shadow: 0 4px 0 #2f3640;
-        }
-        #status-bar {
-            display: flex; justify-content: space-around; background: rgba(255, 255, 255, 0.9);
-            color: #2f3640; padding: 12px; border-radius: 20px; margin: 0 auto 20px auto;
-            max-width: 650px; font-size: 18px; font-weight: 900;
-        }
-    </style>
+
+    <script>
+        // 【ログインガード】ページ読み込み時にログイン/ゲスト判定を行う
+        window.onload = async () => {
+            // auth_controller.js の checkAccess を利用
+            const isAllowed = await AuthController.checkAccess();
+            
+            if (isAllowed) {
+                // 認証OKならゲームの初期化処理を実行
+                console.log("認証成功：メイン画面を表示します");
+                // initGame(); // 既存のゲーム初期化関数がある場合はここで呼び出す
+            } else {
+                // 認証NGならログイン画面へ飛ばす（AuthController内で遷移済み）
+            }
+        };
+    </script>
 </head>
-<body id="body-main">
-    <div id="status-bar">
-        <div>🪙 コイン: <span id="coin-display">100</span></div>
-        <div>📦 パック: <span id="pack-display">0</span>個</div>
-    </div>
+<body>
 
-    <div class="screen">
-        <h1 style="color:#ff4757;">🌟 わくわく学習＆カード 🌟</h1>
-        <button onclick="location.href='quiz.html'" style="background: #3498db; box-shadow: 0 6px 0 #2980b9;">✏️ 問題を解く (コイン＆パック獲得)</button><br>
-        <button onclick="location.href='pack.html'" style="background: #e67e22; box-shadow: 0 6px 0 #d35400;">📦 パックを開封する</button><br>
-        <button onclick="location.href='deck.html'" style="background: #9b59b6; box-shadow: 0 6px 0 #8e44ad;">🎴 デッキ編成 (3枚選択)</button><br>
-        <button onclick="location.href='pokedex.html'" style="background: #1abc9c; box-shadow: 0 6px 0 #16a085;">📖 カード図鑑</button><br>
-        <button onclick="location.href='shop.html'" style="background: #f1c40f; box-shadow: 0 6px 0 #f39c12; color: #2f3640;">🛒 ショップ (パック購入)</button><br>
-        <hr style="border: 1px dashed #ccc; margin: 15px 0;">
-        <button onclick="location.href='battle.html'" style="background: linear-gradient(180deg, #2ed573, #26af5f); box-shadow: 0 6px 0 #1b8a45; font-size:20px;">⚔️ バトル</button>
-        
-        <hr style="border: 1px dashed #ccc; margin: 15px 0;">
-        <div style="display:flex; justify-content:center; gap:10px;">
-            <button id="bgm-toggle-btn" class="setting-btn" onclick="toggleBGM()">🎵 BGM: OFF</button>
-            <button id="theme-toggle-btn" class="setting-btn" onclick="toggleTheme()">🎨 背景: ダーク</button>
-        </div>
-    </div>
+    <!-- ここに既存のメインメニューのHTML構造を記述してください -->
+    <h1>わくわく学習＆カード メインメニュー</h1>
+    
+    <nav>
+        <ul>
+            <li><a href="quiz.html">クイズに挑戦</a></li>
+            <li><a href="pokedex.html">図鑑</a></li>
+            <li><a href="shop.html">ショップ</a></li>
+        </ul>
+        <button onclick="AuthController.logout()">ログアウト</button>
+    </nav>
 
-    <script>
-        // 初期データ（コイン100、パック0、所持カード0枚）
-        if (localStorage.getItem('coins') === null) localStorage.setItem('coins', 100);
-        if (localStorage.getItem('packs') === null) localStorage.setItem('packs', 0);
-        if (localStorage.getItem('playerCollection') === null) localStorage.setItem('playerCollection', JSON.stringify([]));
-        if (localStorage.getItem('activeDeck') === null) localStorage.setItem('activeDeck', JSON.stringify([]));
-        if (localStorage.getItem('theme') === null) localStorage.setItem('theme', 'dark');
-        if (localStorage.getItem('bgmOn') === null) localStorage.setItem('bgmOn', 'false');
+    <!-- 既存のゲーム用スクリプト等があればここに記述 -->
 
-        document.getElementById('coin-display').innerText = localStorage.getItem('coins');
-        document.getElementById('pack-display').innerText = localStorage.getItem('packs');
-
-        function applyTheme() {
-            const theme = localStorage.getItem('theme');
-            const body = document.getElementById('body-main');
-            const btn = document.getElementById('theme-toggle-btn');
-            if (theme === 'pop') {
-                body.className = 'pop';
-                btn.innerText = '🎨 背景: ポップ';
-            } else {
-                body.className = 'dark';
-                btn.innerText = '🎨 背景: ダーク';
-            }
-        }
-        function toggleTheme() {
-            const current = localStorage.getItem('theme');
-            localStorage.setItem('theme', current === 'pop' ? 'dark' : 'pop');
-            applyTheme();
-        }
-        applyTheme();
-
-        let audioCtx = null;
-        let isBgmPlaying = false;
-        let bgmTimer = null;
-
-        function initAudio() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-
-        const relaxNotes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
-        function startRelaxBGM() {
-            isBgmPlaying = true;
-            let step = 0;
-            bgmTimer = setInterval(() => {
-                if (!isBgmPlaying) return;
-                let osc = audioCtx.createOscillator();
-                let gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(relaxNotes[step % relaxNotes.length], audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.2);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(); osc.stop(audioCtx.currentTime + 1.2);
-                step = (step + Math.floor(Math.random() * 3) + 1) % relaxNotes.length;
-            }, 600);
-        }
-
-        function stopBGM() { isBgmPlaying = false; if (bgmTimer) clearInterval(bgmTimer); }
-
-        function toggleBGM() {
-            initAudio();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            let bgmOn = localStorage.getItem('bgmOn') === 'true';
-            bgmOn = !bgmOn;
-            localStorage.setItem('bgmOn', bgmOn ? 'true' : 'false');
-            updateBGMState();
-        }
-
-        function updateBGMState() {
-            const bgmOn = localStorage.getItem('bgmOn') === 'true';
-            const btn = document.getElementById('bgm-toggle-btn');
-            if (bgmOn) {
-                btn.innerText = '🎵 BGM: ON';
-                if (!isBgmPlaying) startRelaxBGM();
-            } else {
-                btn.innerText = '🎵 BGM: OFF';
-                stopBGM();
-            }
-        }
-
-        window.addEventListener('click', () => {
-            initAudio();
-            if (localStorage.getItem('bgmOn') === 'true' && !isBgmPlaying) startRelaxBGM();
-        }, { once: true });
-
-        updateBGMState();
-    </script>
-    <!-- メインメニューなどに配置 -->
-    <button onclick="logout()">ログアウト</button>
-
-    <script>
-        async function logout() {
-            await sbClient.auth.signOut();
-            localStorage.removeItem('isGuest');
-            window.location.href = 'login.html';
-        }
-    </script>
 </body>
 </html>
