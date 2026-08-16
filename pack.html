@@ -2,11 +2,14 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📦 パック開封 - わくわく学習＆カード</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase_client.js"></script>
     <script src="js/data_manager.js"></script>
     <script src="js/auth_controller.js"></script>
+    <!-- 共通カードデータを読み込み -->
+    <script src="js/cards_data.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet">
     <style>
         body {
@@ -37,19 +40,20 @@
         .result-card {
             background: white; border: 3px solid #f1c40f; border-radius: 16px;
             padding: 15px; width: 120px; box-shadow: 0 8px 15px rgba(0,0,0,0.15);
-            animation: popIn 0.5s ease;
+            animation: popIn 0.5s ease; display: flex; flex-direction: column; align-items: center;
         }
         @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
 
         .card-icon { font-size: 45px; margin: 5px 0; }
-        .card-name { font-size: 14px; font-weight: 900; color: #2d3436; }
+        .card-name { font-size: 13px; font-weight: 900; color: #2d3436; margin-bottom: 4px; }
         .card-rarity { font-size: 11px; font-weight: bold; padding: 2px 6px; border-radius: 8px; color: white; display: inline-block; }
+        .card-power { font-size: 11px; font-weight: bold; color: #e67e22; background: #fff3e0; padding: 2px 6px; border-radius: 8px; margin-top: 4px; display: inline-block; }
         
         .rare-N { background: #7f8fa6; }
         .rare-R { background: #2ed573; }
         .rare-SR { background: #3498db; }
         .rare-UR { background: #9b59b6; }
-        .rare-SEC { background: #e74c3c; }
+        .rare-SEC { background: #e74c3c; box-shadow: 0 0 8px #e74c3c; }
 
         button.open-btn {
             background: linear-gradient(180deg, #e67e22, #d35400); color: white; border: none;
@@ -106,30 +110,6 @@
             document.getElementById('open-btn').disabled = (currentPacks <= 0);
         }
 
-        // 図鑑と共有する20種類のマスターカード
-        const MASTER_CARDS = [
-            { id: 1, name: "ひよこっこ", rarity: "N", icon: "🐥" },
-            { id: 2, name: "のらねこ", rarity: "N", icon: "🐱" },
-            { id: 3, name: "しばいぬ", rarity: "N", icon: "🐕" },
-            { id: 4, name: "うさぎさん", rarity: "N", icon: "🐰" },
-            { id: 5, name: "おたずね狐", rarity: "R", icon: "🦊" },
-            { id: 6, name: "ぺんぎん丸", rarity: "R", icon: "🐧" },
-            { id: 7, name: "さめ将軍", rarity: "R", icon: "🦈" },
-            { id: 8, name: "森のくまさん", rarity: "SR", icon: "🐻" },
-            { id: 9, name: "百獣の王", rarity: "SR", icon: "🦁" },
-            { id: 10, name: "天空のワシ", rarity: "SR", icon: "🦅" },
-            { id: 11, name: "炎のドラゴン", rarity: "UR", icon: "🐉" },
-            { id: 12, name: "氷結フェニックス", rarity: "UR", icon: "❄️" },
-            { id: 13, name: "雷光ユニコーン", rarity: "UR", icon: "🦄" },
-            { id: 14, name: "疾風タイガー", rarity: "UR", icon: "🐯" },
-            { id: 15, name: "深海クラーケン", rarity: "UR", icon: "🐙" },
-            { id: 16, name: "黄金ナイト", rarity: "SEC", icon: "⚔️" },
-            { id: 17, name: "大賢者", rarity: "SEC", icon: "🧙‍♂️" },
-            { id: 18, name: "太陽の神獣", rarity: "SEC", icon: "☀️" },
-            { id: 19, name: "暗黒魔王", rarity: "SEC", icon: "👑" },
-            { id: 20, name: "時空の覇者", rarity: "SEC", icon: "🌌" }
-        ];
-
         function openPack() {
             if (currentPacks <= 0) return;
 
@@ -138,15 +118,15 @@
             localStorage.setItem('packs', currentPacks);
             updateStatus();
 
-            // ランダムに3枚のカードを抽出
+            // ランダムに3枚のカードを抽出（共通の MASTER_CARDS を使用）
             let pulledCards = [];
             for (let i = 0; i < 3; i++) {
                 let randomIndex = Math.floor(Math.random() * MASTER_CARDS.length);
                 pulledCards.push(MASTER_CARDS[randomIndex]);
             }
 
-            // localStorage (playerCollection) に保存して図鑑と連動
-            let existingCollection = JSON.parse(localStorage.getItem('playerCollection') || '[]');
+            // 共通関数から現在の所持コレクションを取得し追加保存
+            let existingCollection = getPlayerCollection();
             pulledCards.forEach(c => existingCollection.push(c.id));
             localStorage.setItem('playerCollection', JSON.stringify(existingCollection));
 
@@ -160,6 +140,7 @@
                     <div class="card-icon">${card.icon}</div>
                     <div class="card-name">${card.name}</div>
                     <span class="card-rarity rare-${card.rarity}">${card.rarity}</span>
+                    <div class="card-power">P:${card.power}</div>
                 `;
                 container.appendChild(el);
             });
