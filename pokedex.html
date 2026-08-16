@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📖 カード図鑑 - わくわく学習＆カード</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase_client.js"></script>
@@ -29,7 +30,7 @@
 
         .card-grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 12px; margin-top: 20px;
+            gap: 12px; margin-top: 20px; max-height: 500px; overflow-y: auto; padding: 10px;
         }
 
         .card-item {
@@ -50,7 +51,12 @@
         .rare-R { background: #2ed573; }
         .rare-SR { background: #3498db; }
         .rare-UR { background: #9b59b6; }
-        .rare-SEC { background: #e74c3c; }
+        .rare-SEC { background: #e74c3c; box-shadow: 0 0 8px #e74c3c; }
+
+        .card-power {
+            font-size: 11px; font-weight: bold; color: #e67e22; background: #fff3e0;
+            padding: 2px 6px; border-radius: 8px; margin-top: 4px; display: inline-block;
+        }
 
         .card-count {
             position: absolute; top: -6px; right: -6px; background: #ff4757;
@@ -83,35 +89,48 @@
     <script>
         document.getElementById('body-pokedex').className = localStorage.getItem('theme') || 'dark';
 
-        // 全20種類のカードマスターデータ
+        // 全20種類のマスターカードデータ（N:8枚, R:5枚, SR:4枚, UR:2枚, SEC:1枚）
         const MASTER_CARDS = [
-            { id: 1, name: "ひよこっこ", rarity: "N", icon: "🐥" },
-            { id: 2, name: "のらねこ", rarity: "N", icon: "🐱" },
-            { id: 3, name: "しばいぬ", rarity: "N", icon: "🐕" },
-            { id: 4, name: "うさぎさん", rarity: "N", icon: "🐰" },
-            { id: 5, name: "おたずね狐", rarity: "R", icon: "🦊" },
-            { id: 6, name: "ぺんぎん丸", rarity: "R", icon: "🐧" },
-            { id: 7, name: "さめ将軍", rarity: "R", icon: "🦈" },
-            { id: 8, name: "森のくまさん", rarity: "SR", icon: "🐻" },
-            { id: 9, name: "百獣の王", rarity: "SR", icon: "🦁" },
-            { id: 10, name: "天空のワシ", rarity: "SR", icon: "🦅" },
-            { id: 11, name: "炎のドラゴン", rarity: "UR", icon: "🐉" },
-            { id: 12, name: "氷結フェニックス", rarity: "UR", icon: "❄️" },
-            { id: 13, name: "雷光ユニコーン", rarity: "UR", icon: "🦄" },
-            { id: 14, name: "疾風タイガー", rarity: "UR", icon: "🐯" },
-            { id: 15, name: "深海クラーケン", rarity: "UR", icon: "🐙" },
-            { id: 16, name: "黄金ナイト", rarity: "SEC", icon: "⚔️" },
-            { id: 17, name: "大賢者", rarity: "SEC", icon: "🧙‍♂️" },
-            { id: 18, name: "太陽の神獣", rarity: "SEC", icon: "☀️" },
-            { id: 19, name: "暗黒魔王", rarity: "SEC", icon: "👑" },
-            { id: 20, name: "時空の覇者", rarity: "SEC", icon: "🌌" }
+            // N (8枚)
+            { id: 1, name: "ひよこっこ", rarity: "N", icon: "🐥", power: 30 },
+            { id: 2, name: "のらねこ", rarity: "N", icon: "🐱", power: 35 },
+            { id: 3, name: "しばいぬ", rarity: "N", icon: "🐕", power: 40 },
+            { id: 4, name: "うさぎさん", rarity: "N", icon: "🐰", power: 45 },
+            { id: 5, name: "かえるどん", rarity: "N", icon: "🐸", power: 50 },
+            { id: 6, name: "はむすたー", rarity: "N", icon: "🐹", power: 55 },
+            { id: 7, name: "ぽにー", rarity: "N", icon: "🐴", power: 60 },
+            { id: 8, name: "ぶたさん", rarity: "N", icon: "🐷", power: 65 },
+            
+            // R (5枚)
+            { id: 9, name: "おたずね狐", rarity: "R", icon: "🦊", power: 75 },
+            { id: 10, name: "ぺんぎん丸", rarity: "R", icon: "🐧", power: 80 },
+            { id: 11, name: "さめ将軍", rarity: "R", icon: "🦈", power: 85 },
+            { id: 12, name: "ふくろう仙人", rarity: "R", icon: "🦉", power: 90 },
+            { id: 13, name: "ぶらっくへび", rarity: "R", icon: "🐍", power: 95 },
+            
+            // SR (4枚)
+            { id: 14, name: "森のくまさん", rarity: "SR", icon: "🐻", power: 110 },
+            { id: 15, name: "百獣の王", rarity: "SR", icon: "🦁", power: 120 },
+            { id: 16, name: "天空のワシ", rarity: "SR", icon: "🦅", power: 130 },
+            { id: 17, name: "鎧武者ロボ", rarity: "SR", icon: "🤖", power: 140 },
+            
+            // UR (2枚)
+            { id: 18, name: "炎のドラゴン", rarity: "UR", icon: "🐉", power: 165 },
+            { id: 19, name: "雷光ユニコーン", rarity: "UR", icon: "🦄", power: 175 },
+            
+            // SEC (1枚)
+            { id: 20, name: "黄金ナイト", rarity: "SEC", icon: "⚔️", power: 200 }
         ];
 
-        // 所持カードの読み込み（初期状態は空配列 [] ）
-        let rawData = localStorage.getItem('playerCollection') || '[]';
+        // 所持カードの読み込み（初期状態は空配列 [] で0枚スタート）
+        let rawData = localStorage.getItem('playerCollection');
+        if (rawData === null) {
+            localStorage.setItem('playerCollection', '[]');
+            rawData = '[]';
+        }
         let ownedCardIds = JSON.parse(rawData);
 
-        // IDごとの所持数を計算
+        // IDごとの所持数を集計
         let cardCounts = {};
         ownedCardIds.forEach(id => {
             cardCounts[id] = (cardCounts[id] || 0) + 1;
@@ -127,6 +146,7 @@
         const container = document.getElementById('card-container');
         container.innerHTML = "";
 
+        // マスターデータをもとに一覧表示
         MASTER_CARDS.forEach(card => {
             const count = cardCounts[card.id] || 0;
             const isOwned = count > 0;
@@ -139,6 +159,7 @@
                 <div class="card-icon">${isOwned ? card.icon : '❓'}</div>
                 <div class="card-name">${isOwned ? card.name : '？？？？'}</div>
                 <span class="card-rarity rare-${card.rarity}">${card.rarity}</span>
+                ${isOwned ? `<br><div class="card-power">P:${card.power}</div>` : ''}
             `;
 
             container.appendChild(cardEl);
