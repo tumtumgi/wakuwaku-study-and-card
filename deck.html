@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>デッキ編成 - わくわく学習＆カード</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase_client.js"></script>
@@ -13,55 +14,156 @@
         body.dark { background: linear-gradient(135deg, #1e272e, #4bcffa); }
         body.pop { background: linear-gradient(135deg, #ff9ff3, #feca57); }
         .screen { background: rgba(255, 255, 255, 0.95); max-width: 650px; margin: 0 auto; padding: 25px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
-        button { background: #9b59b6; color: white; border: none; padding: 12px 24px; margin: 8px; font-size: 18px; font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 700; border-radius: 50px; cursor: pointer; box-shadow: 0 6px 0 #8e44ad; }
-        .grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 20px 0; }
-        .card-item { width: 90px; height: 130px; background: #fff; border: 3px solid #9b59b6; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
-        .card-item.selected { border-color: #2ed573; background: #e8f8f5; box-shadow: 0 0 10px #2ed573; }
+        h2 { color: #9b59b6; margin-top: 0; }
+        
+        /* デッキ表示エリア */
+        .deck-status { font-weight: bold; font-size: 18px; margin: 10px 0; color: #2c3e50; }
+        .slot-container { display: flex; justify-content: center; gap: 12px; margin: 15px 0 20px 0; padding: 15px; background: #f1f2f6; border-radius: 16px; }
+        .slot-card { width: 90px; height: 130px; background: #fff; border: 3px dashed #b2bec3; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; cursor: pointer; transition: transform 0.15s; }
+        .slot-card.filled { border: 3px solid #2ed573; background: #e8f8f5; box-shadow: 0 4px 10px rgba(46, 213, 115, 0.3); }
+        
+        /* 所持カード一覧 */
+        .grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 20px 0; max-height: 350px; overflow-y: auto; padding: 10px; }
+        .card-item { width: 90px; height: 130px; background: #fff; border: 3px solid #9b59b6; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.15s, border-color 0.15s; user-select: none; }
+        .card-item:hover { transform: translateY(-4px); }
+        .card-item.selected { border-color: #2ed573; background: #e8f8f5; box-shadow: 0 0 12px #2ed573; opacity: 0.6; }
+        .card-power { font-size: 11px; font-weight: bold; color: #e67e22; background: #fff3e0; padding: 2px 6px; border-radius: 8px; margin-top: 4px; }
+        
+        /* ボタン */
+        button { background: #9b59b6; color: white; border: none; padding: 12px 24px; margin: 8px; font-size: 18px; font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 700; border-radius: 50px; cursor: pointer; box-shadow: 0 6px 0 #8e44ad; transition: transform 0.1s; }
+        button:active { transform: translateY(3px); box-shadow: 0 3px 0 #8e44ad; }
+        .btn-back { background: #7f8fa6; box-shadow: 0 6px 0 #718093; }
+        .btn-back:active { box-shadow: 0 3px 0 #718093; }
     </style>
 </head>
 <body id="body-deck">
     <div class="screen">
-        <h2 style="color:#9b59b6;">🎴 デッキ編成 (3枚選択)</h2>
-        <p>バトルに使うカードを3枚えらんでね</p>
+        <h2>🎴 デッキ編成 (3枚選択)</h2>
+        <p>バトルに使うカードを <strong>3枚</strong> えらんでね！</p>
+
+        <!-- 現在選択中のデッキ枠 (3枚) -->
+        <div class="deck-status">現在のデッキ (<span id="deck-count">0</span>/3)</div>
+        <div id="deck-slots" class="slot-container"></div>
+
+        <hr style="border: 0; border-top: 2px dashed #ddd; margin: 20px 0;">
+
+        <h3>🎒 しょじカード一覧</h3>
         <div id="deck-grid" class="grid"></div>
-        <button onclick="location.href='index.html'" style="background: #7f8fa6; box-shadow: 0 6px 0 #718093;">🏠 メニューにもどる</button>
+
+        <button onclick="saveAndReturn()" class="btn-back">🏠 ほぞんしてメニューにもどる</button>
     </div>
 
     <script>
         // 設定されたテーマ（dark / pop）を反映
         document.getElementById('body-deck').className = localStorage.getItem('theme') || 'dark';
 
-        let playerCollection = JSON.parse(localStorage.getItem('playerCollection')) || [];
-        let activeDeck = JSON.parse(localStorage.getItem('activeDeck')) || [1,2,3];
+        // 20種類のマスターカードデータ定義
         const emojis = ["🦸‍♂️","🐉","🛡️","🔥","💧","⚡","👑","💎","🤖","👻","🦊","🐯","🐸","🦅","🦈","🦄","🌟","🚀","🎯","🎨"];
-        const masterCards = Array.from({length: 20}, (_, i) => ({ id: i + 1, name: `No.${i + 1}`, img: emojis[i], power: 35 + (i * 3) }));
+        const masterCards = Array.from({length: 20}, (_, i) => ({ 
+            id: i + 1, 
+            name: `No.${i + 1}`, 
+            img: emojis[i], 
+            power: 35 + (i * 3) 
+        }));
 
+        // 所持カードとアクティブデッキの初期化（データがない場合のフォールバック付き）
+        let playerCollection = JSON.parse(localStorage.getItem('playerCollection'));
+        if (!playerCollection || playerCollection.length === 0) {
+            playerCollection = [1, 2, 3, 4, 5]; // 初回用サンプルカード
+            localStorage.setItem('playerCollection', JSON.stringify(playerCollection));
+        }
+
+        let activeDeck = JSON.parse(localStorage.getItem('activeDeck'));
+        if (!activeDeck || !Array.isArray(activeDeck)) {
+            activeDeck = playerCollection.slice(0, 3);
+            localStorage.setItem('activeDeck', JSON.stringify(activeDeck));
+        }
+
+        // デッキおよびカード一覧の描画関数
         function renderDeck() {
-            let grid = document.getElementById('deck-grid');
+            // 1. デッキ枚数カウントの更新
+            document.getElementById('deck-count').textContent = activeDeck.length;
+
+            // 2. 上部デッキスロット (3枠) の描画
+            const slotsContainer = document.getElementById('deck-slots');
+            slotsContainer.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                const cardId = activeDeck[i];
+                const slotDiv = document.createElement('div');
+
+                if (cardId) {
+                    const card = masterCards.find(item => item.id === cardId);
+                    slotDiv.className = 'slot-card filled';
+                    slotDiv.innerHTML = `
+                        <div style="font-size:32px;">${card.img}</div>
+                        <div style="font-size:10px; font-weight:bold; color:#333;">${card.name}</div>
+                        <div class="card-power">P:${card.power}</div>
+                    `;
+                    slotDiv.onclick = () => toggleSelect(cardId);
+                } else {
+                    slotDiv.className = 'slot-card';
+                    slotDiv.innerHTML = `<div style="font-size:24px; color:#ccc;">➕</div><div style="font-size:10px; color:#aaa;">わく ${i+1}</div>`;
+                }
+                slotsContainer.appendChild(slotDiv);
+            }
+
+            // 3. 所持カードグリッドの描画
+            const grid = document.getElementById('deck-grid');
             grid.innerHTML = '';
+            
+            if (playerCollection.length === 0) {
+                grid.innerHTML = '<p style="color:#777;">カードをもっていません</p>';
+                return;
+            }
+
             playerCollection.forEach(id => {
-                let c = masterCards.find(item => item.id === id);
-                let isSelected = activeDeck.includes(id);
-                let div = document.createElement('div');
+                const card = masterCards.find(item => item.id === id);
+                if (!card) return;
+
+                const isSelected = activeDeck.includes(id);
+                const div = document.createElement('div');
                 div.className = `card-item ${isSelected ? 'selected' : ''}`;
-                div.innerHTML = `<div style="font-size:32px;">${c.img}</div><div style="font-size:10px; font-weight:bold; color:#333;">${c.name}</div>`;
+                div.innerHTML = `
+                    <div style="font-size:32px;">${card.img}</div>
+                    <div style="font-size:10px; font-weight:bold; color:#333;">${card.name}</div>
+                    <div class="card-power">P:${card.power}</div>
+                `;
                 div.onclick = () => toggleSelect(id);
                 grid.appendChild(div);
             });
         }
 
+        // カードの選択 / 解除の処理
         function toggleSelect(id) {
             if (activeDeck.includes(id)) {
-                if (activeDeck.length <= 1) return alert("最低1枚は必要です");
+                // 選択中のカードを再度タップした場合は解除
                 activeDeck = activeDeck.filter(i => i !== id);
             } else {
-                if (activeDeck.length >= 3) return alert("デッキは3枚までです");
+                // 選択されていないカードの場合（最大3枚まで）
+                if (activeDeck.length >= 3) {
+                    alert("デッキに編成できるのは3枚までです！");
+                    return;
+                }
                 activeDeck.push(id);
             }
+
+            // activeDeck を保存して再描画
             localStorage.setItem('activeDeck', JSON.stringify(activeDeck));
             renderDeck();
         }
 
+        // 保存してメニューへ戻る
+        function saveAndReturn() {
+            if (activeDeck.length < 3) {
+                if (!confirm(`デッキが${activeDeck.length}枚しか選ばれていません。このままメニューにもどりますか？`)) {
+                    return;
+                }
+            }
+            localStorage.setItem('activeDeck', JSON.stringify(activeDeck));
+            location.href = 'index.html';
+        }
+
+        // 初期描画の実行
         renderDeck();
     </script>
 </body>
