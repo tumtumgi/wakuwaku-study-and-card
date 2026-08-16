@@ -126,46 +126,62 @@
 
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
         }
 
         function startPokemonBGM() {
+            // ホーム画面等のBGM設定が 'false' の場合は鳴らさない
+            if (localStorage.getItem('bgmOn') === 'false') return;
+
             initAudio();
-            if (localStorage.getItem('bgmOn') !== 'true') return;
             stopBattleBGM();
 
-            const notes = [293.66, 349.23, 440.00, 349.23, 587.33, 523.25, 440.00, 392.00];
+            // ポケモン風のテンポの速い戦闘用メロディ
+            const notes = [
+                293.66, 349.23, 440.00, 349.23, 587.33, 523.25, 440.00, 392.00,
+                293.66, 349.23, 440.00, 587.33, 659.25, 587.33, 523.25, 440.00
+            ];
             let step = 0;
             battleBgmTimer = setInterval(() => {
+                if (!audioCtx) return;
                 let osc = audioCtx.createOscillator();
                 let gain = audioCtx.createGain();
-                osc.type = 'square';
+                osc.type = 'sawtooth'; // ゲームらしいサウンド
                 osc.frequency.setValueAtTime(notes[step % notes.length], audioCtx.currentTime);
                 gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.11);
                 osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.12);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.11);
                 step++;
-            }, 140);
+            }, 130);
         }
 
         function stopBattleBGM() {
-            if (battleBgmTimer) clearInterval(battleBgmTimer);
+            if (battleBgmTimer) {
+                clearInterval(battleBgmTimer);
+                battleBgmTimer = null;
+            }
         }
 
         function startCardBattle(diff) {
-            // デッキが未設定または所持カードがない場合のフォールバック設定
             let currentDeck = activeDeck.length > 0 ? activeDeck : getPlayerCollection();
             if (currentDeck.length === 0) {
-                currentDeck = [1, 2, 3]; // 万が一カードを全く持っていない場合のデフォルト
+                currentDeck = [1, 2, 3];
             }
 
             document.getElementById('battle-prep-screen').style.display = 'none';
             document.getElementById('battle-action-screen').style.display = 'block';
+            
+            // BGM再生
             startPokemonBGM();
 
+            let targetHp = diff === 'hard' ? 250 : diff === 'normal' ? 180 : 120;
+
             battleState = {
-                enemyMaxHp: diff === 'hard' ? 250 : diff === 'normal' ? 180 : 120,
-                enemyHp: diff === 'hard' ? 250 : diff === 'normal' ? 180 : 120,
+                enemyMaxHp: targetHp,
+                enemyHp: targetHp,
                 enemyEnergy: 0, enemyDefending: false,
                 deck: [...currentDeck].sort(() => Math.random() - 0.5),
                 hand: [], activeCard: null,
@@ -199,7 +215,9 @@
         }
 
         function updateBattleUI() {
+            // 敵のHP及び最大HPテキストを更新
             document.getElementById('enemy-hp-text').innerText = battleState.enemyHp;
+            document.getElementById('enemy-max-hp').innerText = battleState.enemyMaxHp;
             document.getElementById('enemy-hp-fill').style.width = `${Math.max(0, (battleState.enemyHp / battleState.enemyMaxHp) * 100)}%`;
             document.getElementById('enemy-energy-container').innerHTML = Array(Math.min(battleState.enemyEnergy, 10)).fill('<div class="energy-token"></div>').join('');
             document.getElementById('enemy-defense-badge').style.display = battleState.enemyDefending ? 'block' : 'none';
