@@ -4,43 +4,47 @@
     <meta charset="UTF-8">
     <title>🌟 わくわく学習＆カード 🌟</title>
 
-    <!-- Supabase関連の読み込み -->
+    <!-- 1. Supabase本体の読み込み -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 2. 接続設定の読み込み -->
     <script src="js/supabase_client.js"></script>
+    <!-- 3. データ管理の読み込み -->
     <script src="js/data_manager.js"></script>
+    <!-- 4. 認証コントローラーの読み込み -->
     <script src="js/auth_controller.js"></script>
 
     <script>
-        // 【ログインガード】ページ読み込み時にログイン/ゲスト判定を行う
-        window.onload = async () => {
-            // auth_controller.js の checkAccess を利用
+        // 【ログインガード】他のスクリプトと競合しないよう addEventListener を使用
+        window.addEventListener('load', async () => {
+            // auth_controller.js の checkAccess でログイン/ゲスト判定を行う
             const isAllowed = await AuthController.checkAccess();
             
             if (isAllowed) {
-                // 認証OKならゲームの初期化処理を実行
                 console.log("認証成功：メイン画面を表示します");
-                // initGame(); // 既存のゲーム初期化関数がある場合はここで呼び出す
-            } else {
-                // 認証NGならログイン画面へ飛ばす（AuthController内で遷移済み）
+                // 必要であればここにゲームの初期化処理（データロード等）を記述します
+                // 例: initGame();
             }
-        };
+        });
     </script>
 </head>
 <body>
 
-    <!-- ここに既存のメインメニューのHTML構造を記述してください -->
-    <h1>わくわく学習＆カード メインメニュー</h1>
-    
-    <nav>
-        <ul>
-            <li><a href="quiz.html">クイズに挑戦</a></li>
-            <li><a href="pokedex.html">図鑑</a></li>
-            <li><a href="shop.html">ショップ</a></li>
-        </ul>
-        <button onclick="AuthController.logout()">ログアウト</button>
-    </nav>
+    <div style="text-align: center; margin-top: 50px; font-family: sans-serif;">
+        <h1>🌟 わくわく学習＆カード メインメニュー 🌟</h1>
+        
+        <nav style="margin: 30px 0;">
+            <ul style="list-style: none; padding: 0;">
+                <li style="margin: 10px 0;"><a href="quiz.html" style="font-size: 1.2em; text-decoration: none; color: #2196F3;">📝 クイズに挑戦</a></li>
+                <li style="margin: 10px 0;"><a href="pokedex.html" style="font-size: 1.2em; text-decoration: none; color: #4CAF50;">📖 カード図鑑</a></li>
+                <li style="margin: 10px 0;"><a href="shop.html" style="font-size: 1.2em; text-decoration: none; color: #ff9800;">🛒 ショップ</a></li>
+            </ul>
+        </nav>
 
-    <!-- 既存のゲーム用スクリプト等があればここに記述 -->
+        <!-- ログアウトボタン -->
+        <button onclick="AuthController.logout()" style="padding: 10px 20px; background-color: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+            ログアウト（またはゲスト終了）
+        </button>
+    </div>
 
 </body>
 </html>
