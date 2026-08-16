@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>バトル - わくわく学習＆カード</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase_client.js"></script>
+    <script src="js/data_manager.js"></script>
+    <script src="js/auth_controller.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'M PLUS Rounded 1c', sans-serif; margin: 0; padding: 10px; text-align: center; min-height: 100vh; }
+        body.dark { background: linear-gradient(135deg, #1e272e, #4bcffa); }
+        body.pop { background: linear-gradient(135deg, #ff9ff3, #feca57); }
+        .screen { background: rgba(255, 255, 255, 0.95); max-width: 550px; margin: 0 auto; padding: 15px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        button { background: linear-gradient(180deg, #ff6b81, #ff4757); color: white; border: none; padding: 8px 16px; margin: 4px; font-size: 15px; font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 700; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 0 #c23616; }
+        button:disabled { background: #dcdde1 !important; box-shadow: 0 4px 0 #b2bec3 !important; cursor: not-allowed; filter: grayscale(1); }
+
+        .playmat { background: radial-gradient(circle at center, #2f3640 0%, #191c21 100%); border-radius: 16px; padding: 12px; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); position: relative; margin-bottom: 8px; border: 2px solid #576574; }
+        .tcg-card { width: 90px; height: 125px; background: linear-gradient(135deg, #f5f6fa, #dcdde1); border-radius: 10px; border: 4px solid #f1c40f; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 4px 3px; position: relative; box-sizing: border-box; margin: 0 auto; z-index: 2; }
+        .tcg-card-enemy { border-color: #8c7ae6; background: linear-gradient(135deg, #e84118, #c23616); color: white; }
+        .tcg-card-img { font-size: 38px; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.3)); margin-top: 2px; }
+        .tcg-card-name { font-size: 10px; font-weight: 900; background: rgba(255,255,255,0.8); color: #333; padding: 1px 4px; border-radius: 8px; width: 90%; text-align: center; }
+
+        .arena-row { display: flex; justify-content: center; align-items: center; gap: 10px; position: relative; margin-bottom: 8px; }
+        .arena-stats { background: rgba(255,255,255,0.1); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; padding: 6px 8px; color: white; text-align: left; width: 110px; font-size: 11px; }
+        .hp-bar-container { background: rgba(0,0,0,0.5); border-radius: 8px; height: 12px; width: 100%; margin: 3px 0; border: 1px solid #7f8fa6; overflow: hidden; }
+        .hp-bar-fill { height: 100%; background: linear-gradient(90deg, #2ed573, #7bed9f); width: 100%; transition: width 0.4s; }
+        .energy-container { display: flex; gap: 4px; flex-wrap: wrap; min-height: 14px; margin-top: 3px; }
+        .energy-token { width: 12px; height: 12px; background: radial-gradient(circle at 30% 30%, #fbc531, #e1b12c); border-radius: 50%; border: 1px solid #fff; }
+
+        .action-btn { font-size: 11px; padding: 6px 4px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 1px; width: 23%; }
+        .action-btn.end-turn { width: 100%; background: linear-gradient(180deg, #a4b0be, #747d8c); color: white; margin-top: 6px; font-size: 13px; box-shadow: 0 3px 0 #576574; padding: 6px; }
+        .hand-card { border: 2px solid #ff4757; border-radius: 6px; background: #fff; padding: 3px; text-align: center; cursor: pointer; min-width: 45px; color:#333; }
+    </style>
+</head>
+<body id="body-battle">
+    <!-- バトル準備画面 -->
+    <div id="battle-prep-screen" class="screen">
+        <h2 style="color:#ff4757; margin: 5px 0;">⚔️ バトル</h2>
+        <p style="font-size: 14px;">相手のつよさをえらんでね</p>
+        <div style="margin: 15px 0;">
+            <button onclick="startCardBattle('easy')" style="background: #2ed573; box-shadow: 0 4px 0 #1b8a45; width:80%;">★ かんたん</button><br>
+            <button onclick="startCardBattle('normal')" style="background: #ffa502; box-shadow: 0 4px 0 #e1b12c; width:80%;">★★ ふつう</button><br>
+            <button onclick="startCardBattle('hard')" style="background: #ff4757; box-shadow: 0 4px 0 #c23616; width:80%;">★★★ つよい</button>
+        </div>
+        <button onclick="location.href='index.html'" style="background: #7f8fa6; box-shadow: 0 4px 0 #718093;">🏠 メニューにもどる</button>
+    </div>
+
+    <!-- バトル実行画面 -->
+    <div id="battle-action-screen" class="screen" style="display:none; background: rgba(30, 39, 46, 0.95); color:white;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <div id="battle-turn-indicator" style="font-size: 14px; color: #7bed9f; font-weight: 900;"></div>
+            <button onclick="abortBattle()" style="background:#e74c3c; box-shadow:0 3px 0 #c0392b; font-size:11px; padding:3px 10px; margin:0;">🏳️ 途中でやめる</button>
+        </div>
+        
+        <div class="playmat">
+            <div class="arena-row">
+                <div class="tcg-card tcg-card-enemy" id="enemy-card">
+                    <div class="tcg-card-name" id="enemy-name">怪獣</div>
+                    <div class="tcg-card-img">🦖</div>
+                    <div style="font-size: 9px; font-weight:bold;">POWER: ???</div>
+                    <div id="enemy-defense-badge" style="display:none; position:absolute; top:-8px; right:-8px; font-size:18px;">🛡️</div>
+                </div>
+                <div class="arena-stats">
+                    <div style="font-size:10px; opacity:0.8;">ENEMY HP</div>
+                    <div style="font-size: 13px; font-weight:900; text-align:right;"><span id="enemy-hp-text">100</span> / <span id="enemy-max-hp">100</span></div>
+                    <div class="hp-bar-container"><div id="enemy-hp-fill" class="hp-bar-fill" style="background:linear-gradient(90deg, #ff4757, #ff6b81);"></div></div>
+                    <div style="font-size:10px; margin-top:4px;">エネルギー</div>
+                    <div id="enemy-energy-container" class="energy-container"></div>
+                </div>
+            </div>
+
+            <div class="arena-row" style="margin-bottom:0;">
+                <div class="arena-stats">
+                    <div style="font-size:10px; opacity:0.8; color:#f1c40f;">YOUR HP</div>
+                    <div style="font-size: 13px; font-weight:900; text-align:right;"><span id="player-hp-text">100</span> / <span id="player-max-hp">100</span></div>
+                    <div class="hp-bar-container"><div id="player-hp-fill" class="hp-bar-fill"></div></div>
+                    <div style="font-size:10px; margin-top:4px;">エネルギー</div>
+                    <div id="player-energy-container" class="energy-container"></div>
+                </div>
+                <div class="tcg-card" id="player-card">
+                    <div class="tcg-card-name" id="active-card-name">カード名</div>
+                    <div class="tcg-card-img" id="active-card-img">🦸‍♂️</div>
+                    <div style="font-size: 9px; font-weight:bold; color:#333;">POWER: <span id="active-card-power">50</span></div>
+                    <div id="player-defense-badge" style="display:none; position:absolute; top:-8px; left:-8px; font-size:18px;">🛡️</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="battle-log-msg" style="font-size: 12px; font-weight: bold; background: rgba(0,0,0,0.6); padding: 4px; border-radius: 8px; margin: 4px 0;">バトル開始！</div>
+
+        <div id="battle-controls" style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+            <button id="card-defend-btn" class="action-btn" onclick="playerAction('defend')" style="background: linear-gradient(180deg, #70a1ff, #1e90ff); box-shadow:0 3px 0 #1e90ff;">🛡️ ぼうぎょ<span>エネ-1</span></button>
+            <button id="card-heal-btn" class="action-btn" onclick="playerAction('heal')" style="background: linear-gradient(180deg, #7bed9f, #2ed573); box-shadow:0 3px 0 #2ed573;">💚 回復<span>エネ-1</span></button>
+            <button id="card-draw-btn" class="action-btn" onclick="playerAction('draw')" style="background: linear-gradient(180deg, #fbc531, #e1b12c); box-shadow:0 3px 0 #e1b12c;">📥 引く<span>エネ-1</span></button>
+            <button id="card-attack-btn" class="action-btn" onclick="playerAction('attack')" style="background: linear-gradient(180deg, #ff6b81, #ff4757); box-shadow:0 3px 0 #c23616;">🔥 攻撃<span>エネ-3</span></button>
+            <button id="end-turn-btn" class="action-btn end-turn" onclick="endPlayerTurn()">⏩ ターン終了（エネルギー温存）</button>
+        </div>
+        
+        <div style="margin-top: 6px; background: rgba(255,255,255,0.9); border-radius: 10px; padding: 4px 6px; color:#333;">
+            <div style="font-size: 10px; font-weight: 900; margin-bottom: 2px; text-align: left;">手札（クリックで交代 / エネ-1）</div>
+            <div id="player-hand-container" style="display: flex; gap: 4px; overflow-x: auto; min-height: 45px;"></div>
+        </div>
+    </div>
+
+    <!-- リザルト画面 -->
+    <div id="battle-result-screen" class="screen" style="display:none;">
+        <h2 style="color:#ff4757; margin:5px 0;">⚔️ バトル結果 ⚔️</h2>
+        <div id="battle-result-text" style="font-size: 18px; margin: 15px 0; font-weight: 900;"></div>
+        <button onclick="location.href='index.html'" style="background: #7f8fa6; box-shadow: 0 4px 0 #718093;">🏠 メニューへもどる</button>
+    </div>
+
+    <script>
+        document.getElementById('body-battle').className = localStorage.getItem('theme') || 'dark';
+        let coins = parseInt(localStorage.getItem('coins')) || 100;
+        let packs = parseInt(localStorage.getItem('packs')) || 0;
+        let activeDeck = JSON.parse(localStorage.getItem('activeDeck')) || [1,2,3];
+        const emojis = ["🦸‍♂️","🐉","🛡️","🔥","💧","⚡","👑","💎","🤖","👻","🦊","🐯","🐸","🦅","🦈","🦄","🌟","🚀","🎯","🎨"];
+        const masterCards = Array.from({length: 20}, (_, i) => ({ id: i + 1, name: `カードNo.${i + 1}`, img: emojis[i], power: 35 + (i * 3) }));
+
+        let battleState = {};
+        let audioCtx = null;
+        let battleBgmTimer = null;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function startPokemonBGM() {
+            initAudio();
+            if (localStorage.getItem('bgmOn') !== 'true') return;
+            stopBattleBGM();
+
+            const notes = [293.66, 349.23, 440.00, 349.23, 587.33, 523.25, 440.00, 392.00];
+            let step = 0;
+            battleBgmTimer = setInterval(() => {
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(notes[step % notes.length], audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.12);
+                step++;
+            }, 140);
+        }
+
+        function stopBattleBGM() {
+            if (battleBgmTimer) clearInterval(battleBgmTimer);
+        }
+
+        function startCardBattle(diff) {
+            document.getElementById('battle-prep-screen').style.display = 'none';
+            document.getElementById('battle-action-screen').style.display = 'block';
+            startPokemonBGM();
+
+            battleState = {
+                enemyMaxHp: diff === 'hard' ? 250 : diff === 'normal' ? 180 : 120,
+                enemyHp: diff === 'hard' ? 250 : diff === 'normal' ? 180 : 120,
+                enemyEnergy: 0, enemyDefending: false,
+                deck: [...activeDeck].sort(() => Math.random() - 0.5),
+                hand: [], activeCard: null,
+                playerMaxHp: 100, playerHp: 100, playerEnergy: 0, playerDefending: false,
+                turnState: 'player'
+            };
+
+            while(battleState.deck.length < 3) battleState.deck.push(...activeDeck);
+            battleState.deck.sort(() => Math.random() - 0.5);
+
+            for (let i = 0; i < Math.min(2, battleState.deck.length); i++) {
+                battleState.hand.push(battleState.deck.pop());
+            }
+            setCardToActive(battleState.deck.pop() || activeDeck[0]);
+            startPlayerTurn();
+        }
+
+        function abortBattle() {
+            if (confirm("本当にバトルを途中でやめますか？")) {
+                stopBattleBGM();
+                location.href = 'index.html';
+            }
+        }
+
+        function setCardToActive(cardId) {
+            let rawCard = masterCards.find(c => c.id === cardId);
+            battleState.activeCard = { ...rawCard };
+            battleState.playerMaxHp = 60 + Math.floor(rawCard.power * 0.8);
+            battleState.playerHp = battleState.playerMaxHp;
+            battleState.playerDefending = false;
+        }
+
+        function updateBattleUI() {
+            document.getElementById('enemy-hp-text').innerText = battleState.enemyHp;
+            document.getElementById('enemy-hp-fill').style.width = `${Math.max(0, (battleState.enemyHp / battleState.enemyMaxHp) * 100)}%`;
+            document.getElementById('enemy-energy-container').innerHTML = Array(Math.min(battleState.enemyEnergy, 10)).fill('<div class="energy-token"></div>').join('');
+            document.getElementById('enemy-defense-badge').style.display = battleState.enemyDefending ? 'block' : 'none';
+
+            if (battleState.activeCard) {
+                document.getElementById('active-card-img').innerText = battleState.activeCard.img;
+                document.getElementById('active-card-name').innerText = battleState.activeCard.name;
+                document.getElementById('active-card-power').innerText = battleState.activeCard.power;
+                document.getElementById('player-hp-text').innerText = battleState.playerHp;
+                document.getElementById('player-max-hp').innerText = battleState.playerMaxHp;
+                document.getElementById('player-hp-fill').style.width = `${Math.max(0, (battleState.playerHp / battleState.playerMaxHp) * 100)}%`;
+            }
+            document.getElementById('player-energy-container').innerHTML = Array(Math.min(battleState.playerEnergy, 10)).fill('<div class="energy-token"></div>').join('');
+            document.getElementById('player-defense-badge').style.display = battleState.playerDefending ? 'block' : 'none';
+
+            let handContainer = document.getElementById('player-hand-container');
+            handContainer.innerHTML = "";
+            let isP = (battleState.turnState === 'player');
+
+            battleState.hand.forEach((cardId, index) => {
+                let cObj = masterCards.find(c => c.id === cardId);
+                let div = document.createElement('div');
+                div.className = 'hand-card';
+                div.innerHTML = `<div style="font-size:14px;">${cObj.img}</div><div style="font-size:7px; font-weight:bold;">${cObj.name}</div>`;
+                if (isP && battleState.playerEnergy >= 1) {
+                    div.onclick = () => switchCardFromHand(index);
+                } else { div.style.opacity = "0.5"; }
+                handContainer.appendChild(div);
+            });
+
+            document.getElementById('card-attack-btn').disabled = (!isP || battleState.playerEnergy < 3);
+            document.getElementById('card-defend-btn').disabled = (!isP || battleState.playerEnergy < 1 || battleState.playerDefending);
+            document.getElementById('card-heal-btn').disabled = (!isP || battleState.playerEnergy < 1 || battleState.playerHp === battleState.playerMaxHp);
+            document.getElementById('card-draw-btn').disabled = (!isP || battleState.playerEnergy < 1 || battleState.deck.length === 0);
+            document.getElementById('end-turn-btn').disabled = (!isP);
+        }
+
+        function startPlayerTurn() {
+            battleState.turnState = 'player';
+            battleState.playerDefending = false;
+            battleState.playerEnergy = Math.min(10, battleState.playerEnergy + 2);
+            document.getElementById('battle-turn-indicator').innerText = "▶ あなたのターン！ (エネ+2)";
+            updateBattleUI();
+        }
+
+        function playerAction(type) {
+            if(battleState.turnState !== 'player') return;
+
+            if (type === 'defend' && battleState.playerEnergy >= 1) {
+                battleState.playerEnergy -= 1;
+                battleState.playerDefending = true;
+                logMsg(`🛡️ ぼうぎょの体勢！ (次のダメージ半減)`);
+                updateBattleUI();
+            } else if (type === 'heal' && battleState.playerEnergy >= 1) {
+                battleState.playerEnergy -= 1;
+                let healAmt = Math.floor(battleState.activeCard.power * 0.4);
+                battleState.playerHp = Math.min(battleState.playerMaxHp, battleState.playerHp + healAmt);
+                logMsg(`💚 HPを ${healAmt} 回復した！`);
+                updateBattleUI();
+            } else if (type === 'draw' && battleState.playerEnergy >= 1) {
+                battleState.playerEnergy -= 1;
+                if(battleState.deck.length > 0) battleState.hand.push(battleState.deck.pop());
+                logMsg(`📥 山札から1枚引いた！`);
+                updateBattleUI();
+            } else if (type === 'attack' && battleState.playerEnergy >= 3) {
+                battleState.playerEnergy -= 3;
+                executeAttack();
+            }
+        }
+
+        function switchCardFromHand(idx) {
+            battleState.playerEnergy -= 1;
+            let newId = battleState.hand.splice(idx, 1)[0];
+            battleState.hand.push(battleState.activeCard.id);
+            setCardToActive(newId);
+            logMsg(`🔄 ${battleState.activeCard.name} に交代した！`);
+            updateBattleUI();
+        }
+
+        function endPlayerTurn() {
+            battleState.turnState = 'wait';
+            logMsg(`⏩ ターン終了。相手の番になります。`);
+            updateBattleUI();
+            setTimeout(executeEnemyTurn, 1000);
+        }
+
+        function executeAttack() {
+            battleState.turnState = 'wait';
+            updateBattleUI();
+            
+            let dmg = Math.floor(battleState.activeCard.power * (1 + Math.random() * 0.2));
+            if (battleState.enemyDefending) { dmg = Math.floor(dmg / 2); battleState.enemyDefending = false; }
+            battleState.enemyHp -= dmg;
+            
+            if (battleState.enemyHp <= 0) {
+                battleState.enemyHp = 0; updateBattleUI();
+                logMsg(`✨ てきをたおしたぞ！！`);
+                setTimeout(() => endBattle(true), 1200);
+            } else {
+                logMsg(`🔥 ${dmg}のダメージを与えた！`);
+                setTimeout(endPlayerTurn, 800);
+            }
+        }
+
+        function executeEnemyTurn() {
+            battleState.turnState = 'enemy';
+            battleState.enemyDefending = false;
+            battleState.enemyEnergy = Math.min(10, battleState.enemyEnergy + 2);
+            document.getElementById('battle-turn-indicator').innerText = "▶ てきのターン...";
+            updateBattleUI();
+
+            setTimeout(() => {
+                if (battleState.enemyEnergy >= 3 && Math.random() < 0.7) {
+                    battleState.enemyEnergy -= 3;
+                    let enemyDmg = Math.floor(25 + Math.random() * 15);
+                    if (battleState.playerDefending) enemyDmg = Math.floor(enemyDmg / 2);
+                    battleState.playerHp -= enemyDmg;
+                    logMsg(`💥 てきのこうげき！ ${enemyDmg}のダメージ！`);
+                    checkPlayerDeath();
+                } else if (battleState.enemyEnergy >= 1 && Math.random() < 0.5) {
+                    battleState.enemyEnergy -= 1;
+                    battleState.enemyDefending = true;
+                    logMsg(`🛡️ てきは ぼうぎょの体勢をとった！`);
+                    checkPlayerDeath();
+                } else {
+                    logMsg(`てきは エネルギーを溜めている...`);
+                    checkPlayerDeath();
+                }
+            }, 1200);
+        }
+
+        function checkPlayerDeath() {
+            updateBattleUI();
+            if (battleState.playerHp <= 0) {
+                battleState.playerHp = 0; updateBattleUI();
+                logMsg(`きぜつしてしまった…！`);
+                if (battleState.hand.length > 0) {
+                    setTimeout(() => {
+                        setCardToActive(battleState.hand.shift());
+                        logMsg(`手札から「${battleState.activeCard.name}」を出した！`);
+                        setTimeout(() => startPlayerTurn(), 1000);
+                    }, 1200);
+                } else { setTimeout(() => endBattle(false), 1200); }
+            } else { setTimeout(() => startPlayerTurn(), 1000); }
+        }
+
+        function logMsg(msg) { document.getElementById('battle-log-msg').innerText = msg; }
+
+        function endBattle(isWin) {
+            stopBattleBGM();
+            document.getElementById('battle-action-screen').style.display = 'none';
+            document.getElementById('battle-result-screen').style.display = 'block';
+            let resText = document.getElementById('battle-result-text');
+            if (isWin) { 
+                resText.innerHTML = `🎉 大勝利！！<br><span style="color:#2ed573;">報酬コイン +100枚 ＆ パック +1個ゲット！</span>`; 
+                coins += 100;
+                packs += 1;
+                localStorage.setItem('coins', coins);
+                localStorage.setItem('packs', packs);
+            } else { 
+                resText.innerHTML = `💥 ぜんめつ…敗北しました`; 
+            }
+        }
+    </script>
+</body>
+</html>

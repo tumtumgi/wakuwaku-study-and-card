@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>📖 カード図鑑 - わくわく学習＆カード</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase_client.js"></script>
+    <script src="js/data_manager.js"></script>
+    <script src="js/auth_controller.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            margin: 0; padding: 20px; color: #4a4a4a; text-align: center; min-height: 100vh;
+            transition: background 0.5s ease;
+        }
+        body.dark { background: linear-gradient(135deg, #1e272e 0%, #4bcffa 100%); }
+        body.pop { background: linear-gradient(135deg, #ff9ff3 0%, #feca57 100%); }
+
+        .screen {
+            background: rgba(255, 255, 255, 0.95); max-width: 750px; margin: 0 auto;
+            padding: 25px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+
+        .stats-bar {
+            background: #fff3bf; border: 2px solid #f1c40f; border-radius: 16px;
+            padding: 12px; margin: 15px 0; font-size: 18px; font-weight: 900; color: #d35400;
+        }
+
+        .card-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px; margin-top: 20px;
+        }
+
+        .card-item {
+            background: #f1f2f6; border-radius: 12px; padding: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center;
+            position: relative; border: 3px solid #ccc; transition: transform 0.2s;
+        }
+        .card-item.owned { border-color: #f1c40f; background: #fff; transform: translateY(-2px); }
+        .card-item.locked { opacity: 0.45; background: #dfe4ea; filter: grayscale(100%); }
+
+        .card-icon { font-size: 40px; margin: 8px 0; }
+        .card-name { font-size: 13px; font-weight: 900; margin-bottom: 5px; color: #2d3436; }
+        .card-rarity {
+            font-size: 10px; font-weight: bold; border-radius: 8px;
+            padding: 2px 6px; color: white; display: inline-block;
+        }
+        .rare-N { background: #7f8fa6; }
+        .rare-R { background: #2ed573; }
+        .rare-SR { background: #3498db; }
+        .rare-UR { background: #9b59b6; }
+        .rare-SEC { background: #e74c3c; }
+
+        .card-count {
+            position: absolute; top: -6px; right: -6px; background: #ff4757;
+            color: white; border-radius: 50%; width: 22px; height: 22px;
+            font-size: 12px; line-height: 22px; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        button.back-btn {
+            background: #7f8fa6; color: white; border: none; padding: 12px 28px;
+            font-size: 18px; font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 700;
+            border-radius: 50px; cursor: pointer; box-shadow: 0 6px 0 #718093; margin-top: 25px;
+        }
+        button.back-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #718093; }
+    </style>
+</head>
+<body id="body-pokedex">
+    <div class="screen">
+        <h2 style="color:#1abc9c; margin-top:0;">📖 カード図鑑一覧</h2>
+
+        <div class="stats-bar">
+            集めた種類: <span id="owned-types">0</span> / <span id="total-types">0</span> 種類 
+            （合計: <span id="total-cards-count">0</span> 枚）
+        </div>
+
+        <div id="card-container" class="card-grid"></div>
+
+        <button class="back-btn" onclick="location.href='index.html'">🏠 メニューにもどる</button>
+    </div>
+
+    <script>
+        document.getElementById('body-pokedex').className = localStorage.getItem('theme') || 'dark';
+
+        // 全20種類のカードマスターデータ
+        const MASTER_CARDS = [
+            { id: 1, name: "ひよこっこ", rarity: "N", icon: "🐥" },
+            { id: 2, name: "のらねこ", rarity: "N", icon: "🐱" },
+            { id: 3, name: "しばいぬ", rarity: "N", icon: "🐕" },
+            { id: 4, name: "うさぎさん", rarity: "N", icon: "🐰" },
+            { id: 5, name: "おたずね狐", rarity: "R", icon: "🦊" },
+            { id: 6, name: "ぺんぎん丸", rarity: "R", icon: "🐧" },
+            { id: 7, name: "さめ将軍", rarity: "R", icon: "🦈" },
+            { id: 8, name: "森のくまさん", rarity: "SR", icon: "🐻" },
+            { id: 9, name: "百獣の王", rarity: "SR", icon: "🦁" },
+            { id: 10, name: "天空のワシ", rarity: "SR", icon: "🦅" },
+            { id: 11, name: "炎のドラゴン", rarity: "UR", icon: "🐉" },
+            { id: 12, name: "氷結フェニックス", rarity: "UR", icon: "❄️" },
+            { id: 13, name: "雷光ユニコーン", rarity: "UR", icon: "🦄" },
+            { id: 14, name: "疾風タイガー", rarity: "UR", icon: "🐯" },
+            { id: 15, name: "深海クラーケン", rarity: "UR", icon: "🐙" },
+            { id: 16, name: "黄金ナイト", rarity: "SEC", icon: "⚔️" },
+            { id: 17, name: "大賢者", rarity: "SEC", icon: "🧙‍♂️" },
+            { id: 18, name: "太陽の神獣", rarity: "SEC", icon: "☀️" },
+            { id: 19, name: "暗黒魔王", rarity: "SEC", icon: "👑" },
+            { id: 20, name: "時空の覇者", rarity: "SEC", icon: "🌌" }
+        ];
+
+        // 所持カードの読み込み（初期状態は空配列 [] ）
+        let rawData = localStorage.getItem('playerCollection') || '[]';
+        let ownedCardIds = JSON.parse(rawData);
+
+        // IDごとの所持数を計算
+        let cardCounts = {};
+        ownedCardIds.forEach(id => {
+            cardCounts[id] = (cardCounts[id] || 0) + 1;
+        });
+
+        const ownedTypesCount = Object.keys(cardCounts).length;
+        const totalCardsCount = ownedCardIds.length;
+
+        document.getElementById('owned-types').innerText = ownedTypesCount;
+        document.getElementById('total-types').innerText = MASTER_CARDS.length;
+        document.getElementById('total-cards-count').innerText = totalCardsCount;
+
+        const container = document.getElementById('card-container');
+        container.innerHTML = "";
+
+        MASTER_CARDS.forEach(card => {
+            const count = cardCounts[card.id] || 0;
+            const isOwned = count > 0;
+
+            const cardEl = document.createElement('div');
+            cardEl.className = `card-item ${isOwned ? 'owned' : 'locked'}`;
+
+            cardEl.innerHTML = `
+                ${isOwned ? `<div class="card-count">${count}</div>` : ''}
+                <div class="card-icon">${isOwned ? card.icon : '❓'}</div>
+                <div class="card-name">${isOwned ? card.name : '？？？？'}</div>
+                <span class="card-rarity rare-${card.rarity}">${card.rarity}</span>
+            `;
+
+            container.appendChild(cardEl);
+        });
+    </script>
+</body>
+</html>

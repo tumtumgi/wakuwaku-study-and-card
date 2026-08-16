@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>✏️ クイズに挑戦 - わくわく学習＆カード</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase_client.js"></script>
+    <script src="js/data_manager.js"></script>
+    <script src="js/auth_controller.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            margin: 0; padding: 20px; color: #4a4a4a; text-align: center; min-height: 100vh;
+            transition: background 0.5s ease;
+        }
+        body.dark { background: linear-gradient(135deg, #1e272e 0%, #4bcffa 100%); }
+        body.pop { background: linear-gradient(135deg, #ff9ff3 0%, #feca57 100%); }
+
+        .screen-card {
+            background: rgba(255, 255, 255, 0.95); max-width: 680px; margin: 0 auto;
+            padding: 25px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+
+        #status-bar {
+            display: flex; justify-content: space-around; background: rgba(255, 255, 255, 0.9);
+            color: #2f3640; padding: 12px; border-radius: 20px; margin: 0 auto 20px auto;
+            max-width: 680px; font-size: 18px; font-weight: 900;
+        }
+
+        .select-group { margin: 15px 0; text-align: left; }
+        .select-group label { display: block; font-weight: 900; margin-bottom: 8px; color: #2f3640; font-size: 16px; }
+        
+        .grid-buttons-grades { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+        .grid-buttons-subjects { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 15px; }
+        .grid-buttons-modes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
+
+        .btn-option {
+            background: #f1f2f6; border: 3px solid #dfe4ea; border-radius: 12px;
+            padding: 10px 5px; font-size: 14px; font-weight: 900; cursor: pointer;
+            font-family: 'M PLUS Rounded 1c', sans-serif; transition: all 0.2s;
+        }
+        .btn-option.selected { background: #ff4757; color: white; border-color: #ff4757; }
+        .btn-option:disabled { opacity: 0.4; cursor: not-allowed; background: #e0e0e0; }
+
+        .quiz-stage-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px dashed #dfe4ea;
+        }
+        .stage-badge {
+            background: #3742fa; color: white; padding: 6px 14px; border-radius: 20px;
+            font-size: 15px; font-weight: 900;
+        }
+        .timer-badge {
+            background: #ff4757; color: white; padding: 6px 14px; border-radius: 20px;
+            font-size: 16px; font-weight: 900; animation: pulse 1s infinite alternate;
+        }
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+
+        .question-text {
+            font-size: 20px; font-weight: 900; color: #2f3542; margin: 20px 0;
+            line-height: 1.5; min-height: 60px; display: flex; align-items: center; justify-content: center;
+        }
+
+        .choice-btn {
+            display: block; width: 100%; padding: 14px; margin: 10px 0; font-size: 17px;
+            font-weight: 900; font-family: 'M PLUS Rounded 1c', sans-serif;
+            background: #3498db; color: white; border: none; border-radius: 50px;
+            box-shadow: 0 5px 0 #2980b9; cursor: pointer; transition: transform 0.1s;
+        }
+        .choice-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #2980b9; }
+        .choice-btn:disabled { opacity: 0.7; cursor: default; }
+
+        .msg-box { font-size: 16px; font-weight: 900; margin: 15px 0; padding: 12px; border-radius: 12px; text-align: left; }
+        .msg-correct { background: #d4edda; color: #155724; border: 2px solid #c3e6cb; }
+        .msg-wrong { background: #f8d7da; color: #721c24; border: 2px solid #f5c6cb; }
+        .explanation-text { font-size: 14px; margin-top: 8px; font-weight: normal; line-height: 1.4; color: #2f3640; }
+
+        .btn-container { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 15px; }
+
+        button.main-btn {
+            background: linear-gradient(180deg, #2ed573, #26af5f); color: white; border: none;
+            padding: 14px 28px; font-size: 18px; font-family: 'M PLUS Rounded 1c', sans-serif;
+            font-weight: 900; border-radius: 50px; cursor: pointer; box-shadow: 0 6px 0 #1b8a45; flex: 1;
+        }
+        button.sub-btn {
+            background: #ff9f43; color: white; border: none; padding: 14px 20px;
+            font-size: 15px; font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 900;
+            border-radius: 50px; cursor: pointer; box-shadow: 0 6px 0 #e67e22;
+        }
+        button.quit-btn {
+            background: #a4b0be; color: white; border: none; padding: 8px 18px;
+            font-size: 14px; font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 700;
+            border-radius: 20px; cursor: pointer;
+        }
+        button.back-btn {
+            background: #7f8fa6; color: white; border: none; padding: 10px 24px;
+            font-size: 16px; font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 700;
+            border-radius: 50px; cursor: pointer; box-shadow: 0 4px 0 #718093; margin-top: 20px;
+        }
+        .progress-bar-bg { background: #e0e0e0; border-radius: 10px; height: 14px; width: 100%; margin-bottom: 12px; overflow: hidden; }
+        .progress-bar-fill { background: #2ed573; height: 100%; width: 0%; transition: width 0.3s; }
+
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: white; padding: 25px; border-radius: 20px; width: 85%; max-width: 400px;
+            text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        .modal-btn {
+            display: block; width: 100%; padding: 12px; margin: 10px 0; font-size: 16px;
+            font-weight: 900; border-radius: 12px; border: 2px solid #3498db; background: #ebf7ff;
+            color: #2980b9; cursor: pointer; font-family: 'M PLUS Rounded 1c', sans-serif;
+        }
+        .modal-btn.selected { background: #3498db; color: white; }
+    </style>
+</head>
+<body id="body-quiz">
+    <div id="status-bar">
+        <div>🪙 コイン: <span id="coin-display">0</span></div>
+        <div>📦 パック: <span id="pack-display">0</span>個</div>
+    </div>
+
+    <!-- 1. 学年・教科・モード選択画面 -->
+    <div id="setup-screen" class="screen-card">
+        <h2 style="color:#3498db; margin-top:0;">✏️ 学年と教科をえらぼう</h2>
+
+        <div class="select-group">
+            <label>🎓 学年:</label>
+            <div class="grid-buttons-grades">
+                <button class="btn-option selected" onclick="selectGrade(1, this)">1年生</button>
+                <button class="btn-option" onclick="selectGrade(2, this)">2年生</button>
+                <button class="btn-option" onclick="selectGrade(3, this)">3年生</button>
+                <button class="btn-option" onclick="selectGrade(4, this)">4年生</button>
+                <button class="btn-option" onclick="selectGrade(5, this)">5年生</button>
+                <button class="btn-option" onclick="selectGrade(6, this)">6年生</button>
+            </div>
+        </div>
+
+        <div class="select-group">
+            <label>📚 教科:</label>
+            <div class="grid-buttons-subjects">
+                <button id="sub-japanese" class="btn-option selected" onclick="selectSubject('japanese', this)">📖 国語</button>
+                <button id="sub-math" class="btn-option" onclick="selectSubject('math', this)">🔢 算数</button>
+                <button id="sub-science" class="btn-option" style="display:none;" onclick="selectSubject('science', this)">🌱 理科</button>
+                <button id="sub-social" class="btn-option" style="display:none;" onclick="selectSubject('social', this)">🗺️ 社会</button>
+                <button id="sub-disaster" class="btn-option" onclick="selectSubject('disaster', this)">🚨 防災</button>
+            </div>
+        </div>
+
+        <div class="select-group">
+            <label>⏱️ モード選択:</label>
+            <div class="grid-buttons-modes">
+                <button class="btn-option selected" onclick="selectMode('normal', this)">⏳ 時間無制限</button>
+                <button class="btn-option" onclick="selectMode('timeAttack', this)">⚡ タイムアタック</button>
+            </div>
+        </div>
+
+        <div id="time-attack-info" style="display:none; font-size:14px; color:#e67e22; font-weight:bold; margin-bottom:10px;">
+            設定時間: <span id="ta-time-label">1分 (60秒)</span> 【全問正解で <span id="ta-reward-label">2パック</span>】
+        </div>
+
+        <div id="grade-status" style="font-size:15px; color:#2f3542; margin:15px 0; font-weight:bold; background:#f1f2f6; padding:10px; border-radius:12px;"></div>
+
+        <div class="btn-container">
+            <button id="start-btn" class="main-btn" onclick="startQuiz()">🚀 問題をとく！（全10問）</button>
+            <button id="ta-setting-btn" class="sub-btn" onclick="openTimeAttackModal()" style="display:none;">⏱️ 時間を選ぶ</button>
+        </div>
+        <br>
+        <button class="back-btn" onclick="location.href='index.html'">🏠 メニューにもどる</button>
+    </div>
+
+    <!-- タイムアタック時間選択モーダル -->
+    <div id="ta-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:#2f3542;">⏱️ 制限時間を選んでね</h3>
+            <p style="font-size:13px; color:#7f8fa6;">全問正解＆時間内クリアでパックGET！</p>
+            <button class="modal-btn" onclick="setTimeAttackOption(60, '1分', '2パック')">1分 (報酬: 2パック)</button>
+            <button class="modal-btn" onclick="setTimeAttackOption(45, '45秒', '3パック')">45秒 (報酬: 3パック)</button>
+            <button class="modal-btn" onclick="setTimeAttackOption(30, '30秒', '4パック')">30秒 (報酬: 4パック)</button>
+            <button class="modal-btn" onclick="setTimeAttackOption(10, '10秒', '5パック')">10秒 (報酬: 5パック)</button>
+        </div>
+    </div>
+
+    <!-- 2. 問題解答画面 -->
+    <div id="quiz-screen" class="screen-card" style="display:none;">
+        <div class="quiz-stage-header">
+            <span id="quiz-category-badge" class="stage-badge">1年生 国語</span>
+            <span id="quiz-timer-badge" class="timer-badge" style="display:none;">⏳ 残り: 60s</span>
+            <button class="quit-btn" onclick="confirmQuitQuiz()">✕ ちゅうだんする</button>
+        </div>
+
+        <div class="progress-bar-bg"><div id="progress-bar" class="progress-bar-fill"></div></div>
+        <div id="quiz-progress" style="font-weight: 900; color: #7f8fa6; margin-bottom: 5px;">第 1 問 / 全10問</div>
+
+        <div id="question-text" class="question-text"></div>
+        <div id="choices-container"></div>
+        <div id="feedback-msg" class="msg-box" style="display:none;"></div>
+
+        <button id="next-btn" class="main-btn" onclick="nextQuestion()" style="display:none; width:100%; margin-top:15px;">つぎの問題へ ➔</button>
+    </div>
+
+    <!-- 3. 結果画面 -->
+    <div id="result-screen" class="screen-card" style="display:none;">
+        <h2 id="result-title" style="color:#3498db; margin-top:0;">🎉 結果発表</h2>
+        <div id="result-score" style="font-size:24px; font-weight:900; margin:20px 0; color:#2f3542;"></div>
+        <div id="result-reward" style="font-size:18px; font-weight:bold; background:#ebf7ff; padding:15px; border-radius:15px; margin:15px 0;"></div>
+        <button class="main-btn" onclick="backToSetup()" style="width:85%; margin-top:15px;">もう一度ちょうせんする</button>
+        <br>
+        <button class="back-btn" onclick="location.href='index.html'">🏠 メニューにもどる</button>
+    </div>
+
+    <!-- 外部の分割されたクイズエンジンおよびデータ読み込みスクリプト -->
+    <script src="js/quiz_engine.js" defer></script>
+</body>
+</html>
