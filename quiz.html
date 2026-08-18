@@ -3,11 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <title>✏️ クイズに挑戦 - わくわく学習＆カード</title>
+
+    <!-- Supabase & 共通管理スクリプト -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase_client.js"></script>
     <script src="js/data_manager.js"></script>
     <script src="js/auth_controller.js"></script>
+
+    <!-- フォント -->
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet">
+
     <style>
         body {
             font-family: 'M PLUS Rounded 1c', sans-serif;
@@ -121,6 +126,13 @@
     </style>
 </head>
 <body id="body-quiz">
+
+    <!-- テーマ（背景色）設定の反映 -->
+    <script>
+        const currentTheme = localStorage.getItem('theme') || 'dark';
+        document.getElementById('body-quiz').className = currentTheme;
+    </script>
+
     <div id="status-bar">
         <div>🪙 コイン: <span id="coin-display">0</span></div>
         <div>📦 パック: <span id="pack-display">0</span>個</div>
@@ -180,10 +192,10 @@
         <div class="modal-content">
             <h3 style="margin-top:0; color:#2f3542;">⏱️ 制限時間を選んでね</h3>
             <p style="font-size:13px; color:#7f8fa6;">全問正解＆時間内クリアでパックGET！</p>
-            <button class="modal-btn" onclick="setTimeAttackOption(60, '1分', '2パック')">1分 (報酬: 2パック)</button>
-            <button class="modal-btn" onclick="setTimeAttackOption(45, '45秒', '3パック')">45秒 (報酬: 3パック)</button>
-            <button class="modal-btn" onclick="setTimeAttackOption(30, '30秒', '4パック')">30秒 (報酬: 4パック)</button>
-            <button class="modal-btn" onclick="setTimeAttackOption(10, '10秒', '5パック')">10秒 (報酬: 5パック)</button>
+            <button class="modal-btn" onclick="setTimeAttackOption(60, '1分', 2)">1分 (報酬: 2パック)</button>
+            <button class="modal-btn" onclick="setTimeAttackOption(45, '45秒', 3)">45秒 (報酬: 3パック)</button>
+            <button class="modal-btn" onclick="setTimeAttackOption(30, '30秒', 4)">30秒 (報酬: 4パック)</button>
+            <button class="modal-btn" onclick="setTimeAttackOption(10, '10秒', 5)">10秒 (報酬: 5パック)</button>
         </div>
     </div>
 
@@ -215,7 +227,7 @@
         <button class="back-btn" onclick="location.href='index.html'">🏠 メニューにもどる</button>
     </div>
 
-    <!-- 外部の分割されたクイズエンジンおよびデータ読み込みスクリプト -->
+    <!-- 外部クイズエンジン -->
     <script src="js/quiz_engine.js" defer></script>
 </body>
 </html>
