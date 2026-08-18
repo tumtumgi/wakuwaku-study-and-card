@@ -1,9 +1,10 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     let currentGrade = 1;
     let currentSubject = 'japanese';
     let currentMode = 'normal';
     let timeAttackSeconds = 60;
-    let timeAttackReward = '2パック';
+    let timeAttackPackReward = 2;
+
     let coins = 0;
     let packs = 0;
 
@@ -11,16 +12,45 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentIndex = 0;
     let score = 0;
 
+    // タイマー管理用
+    let timerInterval = null;
+    let remainingTime = 0;
+
+    // データロード処理
+    async function initData() {
+        if (typeof loadData === 'function') {
+            const data = await loadData();
+            if (data) {
+                coins = data.coins !== undefined ? data.coins : parseInt(localStorage.getItem('coins') || '100');
+                packs = data.packs !== undefined ? data.packs : parseInt(localStorage.getItem('packs') || '0');
+            }
+        } else {
+            coins = parseInt(localStorage.getItem('coins') || '100');
+            packs = parseInt(localStorage.getItem('packs') || '0');
+        }
+        updateStatusDisplay();
+    }
+
+    async function persistData() {
+        localStorage.setItem('coins', coins.toString());
+        localStorage.setItem('packs', packs.toString());
+
+        if (typeof saveData === 'function') {
+            await saveData({ coins, packs });
+        }
+    }
+
     function updateStatusDisplay() {
         const coinEl = document.getElementById('coin-display');
         if (coinEl) coinEl.textContent = coins;
         const packEl = document.getElementById('pack-display');
         if (packEl) packEl.textContent = packs;
     }
-    updateStatusDisplay();
+
+    await initData();
 
     // ==========================================
-    // グローバル関数（HTMLのonclickから呼び出される関数群）
+    // UI操作・選択用関数
     // ==========================================
 
     window.selectGrade = function(grade, btn) {
@@ -28,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.grid-buttons-grades .btn-option').forEach(b => b.classList.remove('selected'));
         if (btn) btn.classList.add('selected');
 
-        // 1年生・2年生の場合は「理科」「社会」を非表示にし、選択中であれば国語に戻す
         const scienceBtn = document.getElementById('sub-science');
         const socialBtn = document.getElementById('sub-social');
 
@@ -78,13 +107,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modal) modal.style.display = 'flex';
     };
 
-    window.setTimeAttackOption = function(sec, label, reward) {
+    window.setTimeAttackOption = function(sec, label, rewardPacks) {
         timeAttackSeconds = sec;
-        timeAttackReward = reward;
+        timeAttackPackReward = rewardPacks;
         const timeLabel = document.getElementById('ta-time-label');
         const rewardLabel = document.getElementById('ta-reward-label');
         if (timeLabel) timeLabel.textContent = `${label} (${sec}秒)`;
-        if (rewardLabel) rewardLabel.textContent = reward;
+        if (rewardLabel) rewardLabel.textContent = `${rewardPacks}パック`;
         const modal = document.getElementById('ta-modal');
         if (modal) modal.style.display = 'none';
     };
@@ -99,13 +128,13 @@ document.addEventListener('DOMContentLoaded', () => {
     updateGradeStatus();
 
     // ==========================================
-    // データファイルの読み込み関数（各種データ形式に対応）
+    // データロード＆フォーマット
     // ==========================================
+
     function loadQuizDataFile(grade, subject) {
         return new Promise((resolve) => {
             const dataKey = `${grade}_${subject}`;
             
-            // 既に読み込まれている場合
             let rawData = null;
             if (window.QUIZ_DATA) {
                 if (window.QUIZ_DATA[dataKey] && Array.isArray(window.QUIZ_DATA[dataKey])) {
@@ -154,7 +183,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function formatQuestions(rawList) {
-        // 配列をシャッフルしてランダムにし、先頭から10問に絞り込む
         const shuffled = [...rawList].sort(() => Math.random() - 0.5);
         const selected = shuffled.slice(0, 10);
 
@@ -162,13 +190,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const choices = q.choices ? [...q.choices] : [];
             const originalAnswerIndex = (q.answer !== undefined) ? q.answer : q.a;
 
-            // 選択肢と正解フラグをペアにして保持
             const indexedChoices = choices.map((choice, idx) => ({
                 text: choice,
                 isCorrect: (idx === originalAnswerIndex)
             }));
 
-            // 選択肢をランダムにシャッフル
             indexedChoices.sort(() => Math.random() - 0.5);
 
             return {
@@ -193,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
-    // クイズの進行ロジック
+    // クイズの進行＆タイマーロジック
     // ==========================================
 
     window.startQuiz = async function() {
@@ -211,16 +237,51 @@ document.addEventListener('DOMContentLoaded', () => {
         questions = await loadQuizDataFile(currentGrade, currentSubject);
         currentIndex = 0;
         score = 0;
+
+        // タイムアタックタイマー初期化
+        const timerBadge = document.getElementById('quiz-timer-badge');
+        if (currentMode === 'timeAttack') {
+            remainingTime = timeAttackSeconds;
+            if (timerBadge) {
+                timerBadge.style.display = 'inline-block';
+                timerBadge.textContent = `⏳ 残り: ${remainingTime}s`;
+            }
+            startTimer();
+        } else {
+            if (timerBadge) timerBadge.style.display = 'none';
+        }
+
         showQuestion();
     };
 
+    function startTimer() {
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            remainingTime--;
+            const timerBadge = document.getElementById('quiz-timer-badge');
+            if (timerBadge) timerBadge.textContent = `⏳ 残り: ${remainingTime}s`;
+
+            if (remainingTime <= 0) {
+                clearInterval(timerInterval);
+                alert("⏰ タイムアップ！");
+                showResult(true);
+            }
+        }, 1000);
+    }
+
+    function stopTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+    }
+
     window.confirmQuitQuiz = function() {
         if (confirm('クイズをちゅうだんして、はじめの画面に戻りますか？')) {
+            stopTimer();
             window.backToSetup();
         }
     };
 
     window.backToSetup = function() {
+        stopTimer();
         const setupScreen = document.getElementById('setup-screen');
         const quizScreen = document.getElementById('quiz-screen');
         const resultScreen = document.getElementById('result-screen');
@@ -305,11 +366,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentIndex < questions.length) {
             showQuestion();
         } else {
-            showResult();
+            stopTimer();
+            showResult(false);
         }
     };
 
-    function showResult() {
+    async function showResult(isTimeUp = false) {
+        stopTimer();
         const quizScreen = document.getElementById('quiz-screen');
         const resultScreen = document.getElementById('result-screen');
         if (quizScreen) quizScreen.style.display = 'none';
@@ -320,15 +383,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const rewardEl = document.getElementById('result-reward');
         if (rewardEl) {
-            if (score === questions.length) {
-                packs += 2;
-                coins += 100;
-                rewardEl.innerHTML = `✨ 全問正解！すごい！<br><b>🪙 100コイン ＆ 📦 パックをゲット！</b>`;
+            let rewardMsg = "";
+
+            if (currentMode === 'timeAttack') {
+                if (!isTimeUp && score === questions.length) {
+                    const bonusPacks = timeAttackPackReward;
+                    packs += bonusPacks;
+                    coins += 150;
+                    rewardMsg = `⚡ タイムアタック成功！すごすぎる！<br><b>🪙 150コイン ＆ 📦 ${bonusPacks}パックをゲット！</b>`;
+                } else if (isTimeUp) {
+                    coins += 20;
+                    rewardMsg = `⌛ タイムオーバー！<br><b>🪙 20コイン をゲット！</b>`;
+                } else {
+                    coins += 50;
+                    rewardMsg = `時間内クリア！(全問正解でパックGET)<br><b>🪙 50コイン をゲット！</b>`;
+                }
             } else {
-                coins += 30;
-                rewardEl.innerHTML = `よくがんばりました！<br><b>🪙 30コイン をゲット！</b>`;
+                if (score === questions.length) {
+                    packs += 1;
+                    coins += 100;
+                    rewardMsg = `✨ 全問正解！すごい！<br><b>🪙 100コイン ＆ 📦 1パックをゲット！</b>`;
+                } else {
+                    coins += 30;
+                    rewardMsg = `よくがんばりました！<br><b>🪙 30コイン をゲット！</b>`;
+                }
             }
+
+            rewardEl.innerHTML = rewardMsg;
         }
+
+        await persistData();
         updateStatusDisplay();
     }
 });
