@@ -69,7 +69,8 @@
 </head>
 <body id="body-index">
 
-    <audio id="bgm-player" src="bgm_relaxed.mp3" loop></audio>
+    <!-- 変更箇所：BGMのファイルパスとファイル名を更新しました -->
+    <audio id="bgm-player" src="bgm/The_Front_Porch.mp3" loop></audio>
 
     <div id="status-bar">
         <div>🪙 コイン: <span id="coin-display">0</span></div>
@@ -111,6 +112,7 @@
         window.addEventListener('pageshow', updateStatus);
         window.addEventListener('focus', updateStatus);
 
+        // ユーザーの初回クリック時にBGMを再生（ブラウザの自動再生ブロック対策）
         document.addEventListener('click', () => {
             const bgm = document.getElementById('bgm-player');
             if (localStorage.getItem('bgmEnabled') === 'true' && bgm.paused) {
@@ -118,6 +120,7 @@
             }
         }, { once: true });
 
+        // 設定がONであれば読み込み時に再生を試みる
         if (localStorage.getItem('bgmEnabled') === 'true') {
             const bgm = document.getElementById('bgm-player');
             bgm.play().catch(() => {});
@@ -144,6 +147,7 @@
             updateThemeButtonText();
         }
 
+        // BGMのオンオフ切り替え
         function toggleBGM() {
             const bgm = document.getElementById('bgm-player');
             const isEnabled = localStorage.getItem('bgmEnabled') === 'true';
@@ -157,6 +161,7 @@
             updateBGMButton();
         }
 
+        // BGMボタンの表示更新
         function updateBGMButton() {
             const isEnabled = localStorage.getItem('bgmEnabled') === 'true';
             document.getElementById('bgm-btn').innerText = isEnabled ? '🎵 BGM: ON' : '🔇 BGM: OFF';
