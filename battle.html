@@ -98,15 +98,15 @@
         
         <div style="margin: 20px 0;">
             <button onclick="startCardBattle('easy')" class="diff-btn" style="background: linear-gradient(180deg, #2ed573, #26af5f); box-shadow: 0 5px 0 #1b8a45;">
-                <span>★ かんたん</span>
+                <span>★ かんたん（デッキ1枚）</span>
                 <span class="reward-badge">💰 50枚</span>
             </button>
             <button onclick="startCardBattle('normal')" class="diff-btn" style="background: linear-gradient(180deg, #ffa502, #e1b12c); box-shadow: 0 5px 0 #c88f18;">
-                <span>★★ ふつう</span>
+                <span>★★ ふつう（デッキ2枚）</span>
                 <span class="reward-badge">💰 100枚 🎁 1パック</span>
             </button>
             <button onclick="startCardBattle('hard')" class="diff-btn" style="background: linear-gradient(180deg, #ff4757, #ff6b81); box-shadow: 0 5px 0 #c23616;">
-                <span>★★★ つよい</span>
+                <span>★★★ つよい（デッキ3枚）</span>
                 <span class="reward-badge">💰 200枚 🎁 2パック</span>
             </button>
         </div>
@@ -212,14 +212,15 @@
 
         let battleState = {};
 
-        // 戦闘曲のプレイリスト（ランダムシームレス切り替え用）
-        const BGM_TRACKS = ['The_Final_Blow.mp3', 'Steel_Against_the_Throne.mp3'];
+        // 戦闘曲のプレイリスト（bgmフォルダに対応）
+        const BGM_TRACKS = ['bgm/The_Final_Blow.mp3', 'bgm/Steel_Against_the_Throne.mp3'];
         let activeAudio = null; // 現在再生中のAudioオブジェクト
 
+        // 難易度設定と敵HPの変更
         const DIFFICULTY_SETTINGS = {
-            easy: { name: 'かんたん', enemyHp: 100, rewardCoins: 50, rewardPacks: 0 },
-            normal: { name: 'ふつう', enemyHp: 180, rewardCoins: 100, rewardPacks: 1 },
-            hard: { name: 'つよい', enemyHp: 280, rewardCoins: 200, rewardPacks: 2 }
+            easy: { name: 'かんたん', enemyHp: 200, rewardCoins: 50, rewardPacks: 0 },
+            normal: { name: 'ふつう', enemyHp: 350, rewardCoins: 100, rewardPacks: 1 },
+            hard: { name: 'つよい', enemyHp: 540, rewardCoins: 200, rewardPacks: 2 }
         };
 
         function getSafeCollection() {
@@ -229,7 +230,6 @@
             return JSON.parse(localStorage.getItem('myCards')) || [1, 2, 3];
         }
 
-        // 戦闘曲をランダムに選んで再生し、曲が終わったらシームレスに次のランダム曲へ繋ぐ
         function playRandomBattleBGM() {
             if (!bgmOn) return;
             if (activeAudio) {
@@ -242,7 +242,6 @@
             activeAudio.volume = 0.8;
             
             activeAudio.play().then(() => {
-                // 曲が終了したらクロスフェード風または途切れなく次の曲をランダム再生
                 activeAudio.onended = () => {
                     if (bgmOn) {
                         playRandomBattleBGM();
@@ -262,7 +261,8 @@
         function playSpecialBGM(filename) {
             stopBGM();
             if (!bgmOn) return;
-            let spAudio = new Audio(filename);
+            // bgmフォルダから読み込むように修正
+            let spAudio = new Audio('bgm/' + filename);
             spAudio.play().catch(err => console.log("特殊BGM再生エラー:", err));
             activeAudio = spAudio; // 管理下に置く
         }
@@ -288,20 +288,30 @@
             let el = document.getElementById(elementId);
             if (!el) return;
             el.classList.remove(className);
-            void el.offsetWidth; // リフロー発生でアニメーションをリセット
+            void el.offsetWidth; 
             el.classList.add(className);
             setTimeout(() => el.classList.remove(className), duration);
         }
 
         function startCardBattle(diffKey) {
             let config = DIFFICULTY_SETTINGS[diffKey] || DIFFICULTY_SETTINGS.easy;
-            let currentDeck = activeDeck.length > 0 ? activeDeck : getSafeCollection();
-            if (!currentDeck || currentDeck.length === 0) currentDeck = [1, 2, 3];
+            
+            // 難易度ごとに必要なデッキ枚数を設定
+            let requiredCards = diffKey === 'easy' ? 1 : diffKey === 'normal' ? 2 : 3;
+
+            // デッキがない、または枚数が足りない場合はブロックしてアラート
+            if (!activeDeck || activeDeck.length < requiredCards) {
+                alert(`「${config.name}」に挑戦するには、デッキでカードを ${requiredCards} 枚以上選択してください！\n（現在のデッキ枚数: ${activeDeck ? activeDeck.length : 0}枚）`);
+                return; // バトル画面へ進まない
+            }
+
+            // 難易度に応じた枚数だけ、設定したデッキから取り出す（勝手に増殖しない）
+            let currentDeck = activeDeck.slice(0, requiredCards);
 
             document.getElementById('battle-prep-screen').style.display = 'none';
             document.getElementById('battle-action-screen').style.display = 'block';
             updateBgmButtonUI();
-            playRandomBattleBGM(); // ランダム戦闘曲スタート
+            playRandomBattleBGM(); 
 
             battleState = {
                 enemyMaxHp: config.enemyHp,
@@ -311,7 +321,7 @@
                 enemyEnergy: 3, 
                 enemyDefending: false,
                 deck: [...currentDeck].sort(() => Math.random() - 0.5),
-                hand: [], 
+                hand: [], // 最初はベンチ(手札)カードは0枚
                 activeCard: null,
                 playerMaxHp: 100, 
                 playerHp: 100, 
@@ -320,13 +330,8 @@
                 turnState: 'player'
             };
 
-            while(battleState.deck.length < 3) battleState.deck.push(...currentDeck);
-            battleState.deck.sort(() => Math.random() - 0.5);
-
-            for (let i = 0; i < Math.min(2, battleState.deck.length); i++) {
-                battleState.hand.push(battleState.deck.pop());
-            }
-            setCardToActive(battleState.deck.pop() || currentDeck[0]);
+            // 最初に出すカードを1枚だけ設定（残りは山札に残る）
+            setCardToActive(battleState.deck.pop());
             
             document.getElementById('battle-turn-indicator').innerText = "▶ あなたのターン！";
             document.getElementById('battle-turn-indicator').style.color = "#7bed9f";
@@ -400,7 +405,10 @@
             document.getElementById('card-attack-btn').disabled = (!isP || battleState.playerEnergy < 3);
             document.getElementById('card-defend-btn').disabled = (!isP || battleState.playerEnergy < 1 || battleState.playerDefending);
             document.getElementById('card-heal-btn').disabled = (!isP || battleState.playerEnergy < 1 || battleState.playerHp === battleState.playerMaxHp);
+            
+            // 山札(deck)が0枚なら引けないようにボタンを無効化
             document.getElementById('card-draw-btn').disabled = (!isP || battleState.playerEnergy < 1 || battleState.deck.length === 0);
+            
             document.getElementById('end-turn-btn').disabled = (!isP);
         }
 
