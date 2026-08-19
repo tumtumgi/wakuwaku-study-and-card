@@ -12,6 +12,7 @@
     <script src="js/cards_data.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet">
     <style>
+        /* CSSはそのまま */
         body {
             font-family: 'M PLUS Rounded 1c', sans-serif;
             margin: 0; padding: 20px; color: #4a4a4a; text-align: center; min-height: 100vh;
@@ -110,6 +111,31 @@
             document.getElementById('open-btn').disabled = (currentPacks <= 0);
         }
 
+        // --- 排出確率のロジック ---
+        function drawCard() {
+            const rand = Math.random() * 100; // 0 〜 99.999...
+            let targetRarity = "N";
+
+            if (rand < 2) {
+                targetRarity = "SEC"; // 2% (0〜2)
+            } else if (rand < 7) {
+                targetRarity = "UR";  // 5% (2〜7)
+            } else if (rand < 10) {
+                targetRarity = "SR";  // 3% (7〜10)
+            } else if (rand < 40) {
+                targetRarity = "R";   // 30% (10〜40)
+            } else {
+                targetRarity = "N";   // 60% (40〜100)
+            }
+
+            // 決定したレアリティのカードだけを絞り込む
+            const filteredCards = MASTER_CARDS.filter(c => c.rarity === targetRarity);
+            
+            // その中からランダムに1枚選ぶ
+            const randomIndex = Math.floor(Math.random() * filteredCards.length);
+            return filteredCards[randomIndex];
+        }
+
         function openPack() {
             if (currentPacks <= 0) return;
 
@@ -118,11 +144,10 @@
             localStorage.setItem('packs', currentPacks);
             updateStatus();
 
-            // ランダムに3枚のカードを抽出（共通の MASTER_CARDS を使用）
+            // 確率に基づき3枚のカードを抽出
             let pulledCards = [];
             for (let i = 0; i < 3; i++) {
-                let randomIndex = Math.floor(Math.random() * MASTER_CARDS.length);
-                pulledCards.push(MASTER_CARDS[randomIndex]);
+                pulledCards.push(drawCard());
             }
 
             // 共通関数から現在の所持コレクションを取得し追加保存
