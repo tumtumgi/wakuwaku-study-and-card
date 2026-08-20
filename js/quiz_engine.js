@@ -18,26 +18,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     let remainingTime = 0;
 
     // ==========================================
-    // 1. 音声ファイルの読み込みとBGM/SE制御
+    // 1. 音声ファイルとBGM/SE制御
     // ==========================================
-    // ホーム画面（index.html）と連動するためのキー 'bgmEnabled' を使用
     let isBGMEnabled = localStorage.getItem('bgmEnabled') !== 'false';
 
     const bgmNormal = new Audio('bgm/Notes_from_the_Study.mp3');
     bgmNormal.loop = true;
-    bgmNormal.volume = 0.3; // BGM音量を30%にしてSEを聞きやすく調整
+    bgmNormal.volume = 0.3;
 
     const bgmTA = new Audio('bgm/Seconds_Left.mp3');
     bgmTA.loop = true;
     bgmTA.volume = 0.3;
 
-    // 効果音設定
     const correctSound = new Audio('bgm/reversed_chime.wav');
     correctSound.volume = 1.0;
     const wrongSound = new Audio('bgm/quiz_buzzer_extended.wav');
     wrongSound.volume = 1.0;
 
-    // 効果音再生用関数
     function playSE(sound) {
         try {
             sound.currentTime = 0;
@@ -47,7 +44,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // BGMのオン/オフ切替（ホーム画面と完全連動）
     window.toggleBGM = function() {
         isBGMEnabled = !isBGMEnabled;
         localStorage.setItem('bgmEnabled', isBGMEnabled ? 'true' : 'false');
@@ -71,7 +67,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function playBGM(mode) {
         stopBGM(); 
-        if (!isBGMEnabled) return; // BGMがOFFの場合は再生しない
+        if (!isBGMEnabled) return;
 
         if (mode === 'normal') {
             bgmNormal.play().catch(e => console.log('BGM再生エラー:', e));
@@ -88,59 +84,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ==========================================
-    // 2. データロード＆保存処理（データの消失・初期化を防止）
-    // ==========================================
-    async function initData() {
-        updateBGMButton();
-
-        let loadedCoins = null;
-        let loadedPacks = null;
-
-        // Supabase / gameData からデータ取得を試みる
-        if (typeof loadData === 'function') {
-            const data = await loadData();
-            if (data) {
-                if (data.coins !== undefined) loadedCoins = parseInt(data.coins);
-                if (data.packs !== undefined) loadedPacks = parseInt(data.packs);
-            }
-        }
-        
-        // フォールバック: 個別キーから読み込み
-        if (loadedCoins === null || isNaN(loadedCoins)) {
-            loadedCoins = parseInt(localStorage.getItem('coins') || '100');
-        }
-        if (loadedPacks === null || isNaN(loadedPacks)) {
-            loadedPacks = parseInt(localStorage.getItem('packs') || '0');
-        }
-
-        totalCoins = loadedCoins;
-        totalPacks = loadedPacks;
-
-        // メニュー画面と共通のキーにも確実に同期保存
-        await persistData();
-        updateStatusDisplay();
-    }
-
-    async function persistData() {
-        localStorage.setItem('coins', totalCoins.toString());
-        localStorage.setItem('packs', totalPacks.toString());
-
-        if (typeof saveData === 'function') {
-            await saveData({ coins: totalCoins, packs: totalPacks });
-        }
-    }
-
-    function updateStatusDisplay() {
-        const coinEl = document.getElementById('coin-display');
-        if (coinEl) coinEl.textContent = totalCoins;
-        const packEl = document.getElementById('pack-display');
-        if (packEl) packEl.textContent = totalPacks;
-    }
-
-    await initData();
-
-    // ==========================================
-    // 3. UI操作・選択用関数
+    // 2. UI操作・選択用関数 (awaitの前に即時登録)
     // ==========================================
     window.selectGrade = function(grade, btn) {
         currentGrade = grade;
@@ -152,7 +96,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (grade === 1 || grade === 2) {
             if (scienceBtn) scienceBtn.style.display = 'none';
-            if (socialBtn) scienceBtn.style.display = 'none';
+            if (socialBtn) socialBtn.style.display = 'none';
 
             if (currentSubject === 'science' || currentSubject === 'social') {
                 currentSubject = 'japanese';
@@ -213,10 +157,68 @@ document.addEventListener('DOMContentLoaded', async () => {
             statusEl.textContent = `現在選択中: ${currentGrade}年生 ${subjectNames[currentSubject] || currentSubject}`;
         }
     }
-    updateGradeStatus();
 
     // ==========================================
-    // 4. データロード＆クイズ進行
+    // 3. データロード＆保存処理
+    // ==========================================
+    async function initData() {
+        updateBGMButton();
+
+        let loadedCoins = null;
+        let loadedPacks = null;
+
+        try {
+            if (typeof loadData === 'function') {
+                const data = await loadData();
+                if (data) {
+                    if (data.coins !== undefined) loadedCoins = parseInt(data.coins);
+                    if (data.packs !== undefined) loadedPacks = parseInt(data.packs);
+                }
+            }
+        } catch(e) {
+            console.log('データ読み込みエラー:', e);
+        }
+        
+        if (loadedCoins === null || isNaN(loadedCoins)) {
+            loadedCoins = parseInt(localStorage.getItem('coins') || '100');
+        }
+        if (loadedPacks === null || isNaN(loadedPacks)) {
+            loadedPacks = parseInt(localStorage.getItem('packs') || '0');
+        }
+
+        totalCoins = loadedCoins;
+        totalPacks = loadedPacks;
+
+        await persistData();
+        updateStatusDisplay();
+    }
+
+    async function persistData() {
+        localStorage.setItem('coins', totalCoins.toString());
+        localStorage.setItem('packs', totalPacks.toString());
+
+        if (typeof saveData === 'function') {
+            try {
+                await saveData({ coins: totalCoins, packs: totalPacks });
+            } catch(e) {
+                console.log('データ保存エラー:', e);
+            }
+        }
+    }
+
+    function updateStatusDisplay() {
+        const coinEl = document.getElementById('coin-display');
+        if (coinEl) coinEl.textContent = totalCoins;
+        const packEl = document.getElementById('pack-display');
+        if (packEl) packEl.textContent = totalPacks;
+    }
+
+    // 初期表示のセットアップ
+    updateGradeStatus();
+    initData(); // 非同期でバックグラウンド実行（画面の操作をブロックしない）
+
+    // ==========================================
+    // 4. クイズゲーム進行制御
     // ==========================================
     function loadQuizDataFile(grade, subject) {
         return new Promise((resolve) => {
@@ -295,11 +297,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ];
     }
 
-    // ==========================================
-    // 5. クイズゲーム制御
-    // ==========================================
     window.startQuiz = async function() {
-        // クイズ開始時に最新のデータを再ロードして同期する
         await initData();
 
         questions = await loadQuizDataFile(currentGrade, currentSubject);
@@ -365,7 +363,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('next-btn').style.display = 'none';
     }
 
-    // 解答判定・効果音再生
     window.checkAnswer = function(selectedIndex, btn) {
         const btns = document.querySelectorAll('.choice-btn');
         btns.forEach(b => b.disabled = true);
@@ -376,12 +373,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (isCorrect) {
             score++;
-            playSE(correctSound); // ピンポン音再生
+            playSE(correctSound);
             btn.style.background = '#2ed573';
             feedbackEl.className = 'msg-box msg-correct';
             feedbackEl.innerHTML = `⭕ 正解！<div class="explanation-text">${q.explanation}</div>`;
         } else {
-            playSE(wrongSound); // ブッブー音再生
+            playSE(wrongSound);
             btn.style.background = '#ff4757';
             feedbackEl.className = 'msg-box msg-wrong';
             feedbackEl.innerHTML = `❌ 残念... 正解は「${q.choices[q.answer]}」<div class="explanation-text">${q.explanation}</div>`;
@@ -401,7 +398,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         showQuestion();
     };
 
-    // クイズ終了と報酬保存
     async function finishQuiz() {
         stopBGM();
         if (timerInterval) clearInterval(timerInterval);
@@ -431,11 +427,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             resultReward.innerHTML = `🪙 コイン +${earnedCoins} GET！`;
         }
 
-        // クイズで得たコイン・パックを累計に加算
         totalCoins += earnedCoins;
         totalPacks += earnedPacks;
 
-        // 加算後のデータを保存＆表示更新
         await persistData();
         updateStatusDisplay();
     }
