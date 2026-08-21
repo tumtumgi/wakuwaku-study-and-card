@@ -120,6 +120,9 @@
 </head>
 <body>
 
+    <!-- BGM用のオーディオタグ (ループ再生設定) -->
+    <audio id="bgm" src="bgm/Dawn_of_the_Sky_Kingdom.mp3" loop preload="auto"></audio>
+
     <div class="login-card">
         <h2>🌟 ログイン 🌟</h2>
 
@@ -143,8 +146,17 @@
     </div>
 
     <script>
-        // JavaScript部分は元のコードと同じため省略していますが、
-        // 動作に変更はありませんのでそのままご利用ください。
+        // 画面のどこかをクリックしたときにBGMを再生する処理
+        document.body.addEventListener('click', () => {
+            const bgm = document.getElementById('bgm');
+            // まだ再生されていなければ再生を開始
+            if (bgm.paused) {
+                bgm.volume = 0.5; // 音量調整（0.0〜1.0の間でお好みで調整してください）
+                bgm.play().catch(e => console.log('BGMの再生に失敗しました:', e));
+            }
+        }, { once: true }); // 最初の1回のクリック時だけ実行されるように設定
+
+
         const messageEl = document.getElementById('message');
 
         async function handleLogin() {
