@@ -102,7 +102,7 @@
         document.getElementById('body-pack').className = localStorage.getItem('theme') || 'dark';
 
         let currentPacks = parseInt(localStorage.getItem('packs')) || 0;
-        let currentCoins = parseInt(localStorage.getItem('coins')) || 100;
+        let currentCoins = parseInt(localStorage.getItem('coins')) || 0;
         updateStatus();
 
         function updateStatus() {
