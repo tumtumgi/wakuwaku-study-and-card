@@ -18,14 +18,14 @@ const AuthController = {
     // ゲストとして遊ぶ
     playAsGuest: () => {
         localStorage.setItem('isGuest', 'true');
-        window.location.href = 'index.html';
+        window.location.href = 'menu.html';
     },
 
     // ログアウト処理
     logout: async () => {
         await sbClient.auth.signOut();
         localStorage.removeItem('isGuest');
-        window.location.href = 'login.html';
+        window.location.href = 'index.html';
     },
 
     // 今のステータスを確認（ログイン中か、ゲストか）
@@ -35,12 +35,12 @@ const AuthController = {
 
         if (requireLogin && !user) {
             alert("この機能にはログインが必要です。");
-            window.location.href = 'login.html';
+            window.location.href = 'index.html';
             return false;
         }
 
         if (!user && !isGuest) {
-            window.location.href = 'login.html';
+            window.location.href = 'index.html';
             return false;
         }
         return true;
