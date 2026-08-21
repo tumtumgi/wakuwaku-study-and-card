@@ -12,69 +12,109 @@
 
     <style>
         body {
-            font-family: sans-serif;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
-            background-color: #f4f4f9;
             margin: 0;
+            /* 画像背景設定 */
+            background-image: url('top.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            /* 背景を少し暗くして文字を見やすく */
+            background-color: rgba(0, 0, 0, 0.4);
+            background-blend-mode: darken;
         }
+
         .login-card {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            width: 320px;
+            /* グラスモーフィズム */
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            width: 350px;
             text-align: center;
+            color: #fff;
         }
+
         h2 {
-            margin-bottom: 20px;
-            color: #333;
+            margin-bottom: 25px;
+            color: #FFD700; /* ゴールド */
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            font-size: 1.5em;
         }
-        /* 追加：データ保存の説明用スタイル */
+
         .info-box {
-            background-color: #e3f2fd;
-            border-radius: 8px;
-            padding: 12px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
             margin-bottom: 20px;
             font-size: 0.85em;
             text-align: left;
-            color: #333;
-            line-height: 1.5;
+            color: #ddd;
+            line-height: 1.6;
         }
-        .info-box p {
-            margin: 5px 0;
-        }
+
         .info-box strong {
-            color: #1976d2;
+            color: #4fc3f7;
         }
         
         input {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             margin: 10px 0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #555;
+            border-radius: 8px;
             box-sizing: border-box;
+            color: white;
+            transition: border 0.3s;
         }
+
+        input:focus {
+            outline: none;
+            border: 1px solid #4fc3f7;
+        }
+
         button {
             width: 100%;
-            padding: 10px;
-            margin: 5px 0;
+            padding: 12px;
+            margin: 8px 0;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
+            color: white;
+            transition: transform 0.2s, filter 0.2s;
         }
-        .btn-primary { background-color: #4CAF50; color: white; }
-        .btn-secondary { background-color: #2196F3; color: white; }
-        .btn-guest { background-color: #ff9800; color: white; }
-        .btn-link { background: none; color: #666; text-decoration: underline; font-size: 0.9em; margin-top: 10px; }
+
+        button:hover {
+            transform: scale(1.02);
+            filter: brightness(1.2);
+        }
+
+        .btn-primary { background: linear-gradient(135deg, #4caf50, #2e7d32); }
+        .btn-secondary { background: linear-gradient(135deg, #2196f3, #1565c0); }
+        .btn-guest { background: linear-gradient(135deg, #ff9800, #ef6c00); }
+        
+        .btn-link { 
+            background: none; 
+            color: #aaa; 
+            text-decoration: underline; 
+            font-size: 0.85em; 
+            margin-top: 15px; 
+            border: none;
+        }
+
         #message {
-            margin-top: 15px;
+            margin-top: 20px;
             font-size: 0.9em;
+            text-shadow: 0 0 5px black;
         }
     </style>
 </head>
@@ -83,12 +123,11 @@
     <div class="login-card">
         <h2>🌟 ログイン 🌟</h2>
 
-        <!-- 追加：セーブデータに関するわかりやすい説明 -->
         <div class="info-box">
             <p><strong>☁️ メールアドレスでログイン</strong><br>
-            スマホやパソコンなど、どの端末からでもデータを引き継いで遊べます。</p>
+            どの端末からでもデータを引き継げます。</p>
             <p><strong>📱 ログインせずに遊ぶ</strong><br>
-            データは今使っているこの端末（ブラウザ）に保存されます。</p>
+            この端末にのみデータを保存します。</p>
         </div>
 
         <input type="email" id="email" placeholder="メールアドレス">
@@ -96,8 +135,7 @@
         
         <button class="btn-primary" onclick="handleLogin()">ログイン</button>
         <button class="btn-secondary" onclick="handleSignUp()">新規登録</button>
-        <!-- 修正：ボタンのテキストを実際の挙動に合わせて変更 -->
-        <button class="btn-guest" onclick="AuthController.playAsGuest()">ログインせずに遊ぶ（この端末に保存）</button>
+        <button class="btn-guest" onclick="AuthController.playAsGuest()">ログインせずに遊ぶ</button>
         
         <button class="btn-link" onclick="handleForgotPassword()">パスワードを忘れた場合</button>
         
@@ -105,14 +143,15 @@
     </div>
 
     <script>
+        // JavaScript部分は元のコードと同じため省略していますが、
+        // 動作に変更はありませんのでそのままご利用ください。
         const messageEl = document.getElementById('message');
 
-        // ログイン処理
         async function handleLogin() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             if (!email || !password) {
-                messageEl.style.color = '#d9534f';
+                messageEl.style.color = '#ff5252';
                 messageEl.innerText = "メールアドレスとパスワードを入力してください。";
                 return;
             }
@@ -120,36 +159,34 @@
                 await AuthController.login(email, password);
                 window.location.href = 'menu.html';
             } catch (e) {
-                messageEl.style.color = '#d9534f';
+                messageEl.style.color = '#ff5252';
                 messageEl.innerText = "ログイン失敗: " + e.message;
             }
         }
 
-        // 新規登録処理
         async function handleSignUp() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             if (!email || !password) {
-                messageEl.style.color = '#d9534f';
+                messageEl.style.color = '#ff5252';
                 messageEl.innerText = "メールアドレスとパスワードを入力してください。";
                 return;
             }
             try {
                 await AuthController.signUp(email, password);
-                messageEl.style.color = '#4CAF50';
-                messageEl.innerText = "確認メールを送信しました。メールをご確認ください。";
+                messageEl.style.color = '#4caf50';
+                messageEl.innerText = "確認メールを送信しました。";
             } catch (e) {
-                messageEl.style.color = '#d9534f';
+                messageEl.style.color = '#ff5252';
                 messageEl.innerText = "登録失敗: " + e.message;
             }
         }
 
-        // パスワードリセット要求処理
         async function handleForgotPassword() {
             const email = document.getElementById('email').value;
             if (!email) {
-                messageEl.style.color = '#d9534f';
-                messageEl.innerText = "上部の入力欄にメールアドレスを入力してください。";
+                messageEl.style.color = '#ff5252';
+                messageEl.innerText = "メールアドレスを入力してください。";
                 return;
             }
             try {
@@ -157,14 +194,13 @@
                     redirectTo: window.location.href.replace('login.html', 'update-password.html')
                 });
                 if (error) throw error;
-                messageEl.style.color = '#4CAF50';
-                messageEl.innerText = "パスワード再設定用のメールを送信しました。";
+                messageEl.style.color = '#4caf50';
+                messageEl.innerText = "再設定メールを送信しました。";
             } catch (e) {
-                messageEl.style.color = '#d9534f';
+                messageEl.style.color = '#ff5252';
                 messageEl.innerText = "送信失敗: " + e.message;
             }
         }
     </script>
-
 </body>
 </html>
