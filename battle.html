@@ -212,11 +212,11 @@
 
         let battleState = {};
 
-        // 戦闘曲のプレイリスト（bgmフォルダに対応）
-        const BGM_TRACKS = ['bgm/The_Final_Blow.mp3', 'bgm/Steel_Against_the_Throne.mp3'];
+        // 戦闘曲リスト
+        const BGM_TRACKS = ['The_Final_Blow.mp3', 'Steel_Against_the_Throne.mp3'];
         let activeAudio = null;
 
-        // 難易度設定 (敵のHP・基本攻撃力・敵デッキ枚数)
+        // 難易度設定
         const DIFFICULTY_SETTINGS = {
             easy:   { name: 'かんたん', enemyHp: 200, enemyBaseAtk: 30,  enemyDeckSize: 1, rewardCoins: 50,  rewardPacks: 0 },
             normal: { name: 'ふつう',   enemyHp: 350, enemyBaseAtk: 60, enemyDeckSize: 2, rewardCoins: 100, rewardPacks: 1 },
@@ -226,7 +226,7 @@
         // 効果音（SE）再生関数
         function playSE(filename) {
             try {
-                let se = new Audio('bgm/' + filename);
+                let se = new Audio(filename);
                 se.currentTime = 0;
                 se.play().catch(e => console.log("SE再生エラー:", e));
             } catch(e) {
@@ -272,7 +272,7 @@
         function playSpecialBGM(filename) {
             stopBGM();
             if (!bgmOn) return;
-            let spAudio = new Audio('bgm/' + filename);
+            let spAudio = new Audio(filename);
             spAudio.play().catch(err => console.log("特殊BGM再生エラー:", err));
             activeAudio = spAudio;
         }
@@ -305,7 +305,6 @@
 
         function startCardBattle(diffKey) {
             let config = DIFFICULTY_SETTINGS[diffKey] || DIFFICULTY_SETTINGS.easy;
-            
             let requiredCards = diffKey === 'easy' ? 1 : diffKey === 'normal' ? 2 : 3;
 
             if (!activeDeck || activeDeck.length < requiredCards) {
@@ -324,7 +323,7 @@
                 enemyMaxHp: config.enemyHp,
                 enemyHp: config.enemyHp,
                 enemyBaseAtk: config.enemyBaseAtk,
-                enemyDeckCount: config.enemyDeckSize, // 敵のデッキ枚数 (★:1, ★★:2, ★★★:3)
+                enemyDeckCount: config.enemyDeckSize,
                 rewardCoins: config.rewardCoins,
                 rewardPacks: config.rewardPacks,
                 enemyEnergy: 3, 
@@ -369,7 +368,6 @@
         }
 
         function updateBattleUI() {
-            // 敵UI
             document.getElementById('enemy-hp-text').innerText = battleState.enemyHp;
             document.getElementById('enemy-max-hp').innerText = battleState.enemyMaxHp;
             document.getElementById('enemy-hp-fill').style.width = `${Math.max(0, (battleState.enemyHp / battleState.enemyMaxHp) * 100)}%`;
@@ -378,7 +376,6 @@
             document.getElementById('enemy-defense-badge').style.display = battleState.enemyDefending ? 'block' : 'none';
             document.getElementById('enemy-deck-count').innerText = battleState.enemyDeckCount || 1;
 
-            // プレイヤーUI
             if (battleState.activeCard) {
                 document.getElementById('active-card-img').innerText = battleState.activeCard.icon || '🃏';
                 document.getElementById('active-card-name').innerText = battleState.activeCard.name || 'カード';
@@ -391,7 +388,6 @@
             document.getElementById('player-energy-container').innerHTML = Array(Math.min(battleState.playerEnergy, 10)).fill('<div class="energy-token"></div>').join('');
             document.getElementById('player-defense-badge').style.display = battleState.playerDefending ? 'block' : 'none';
 
-            // 手札
             let handContainer = document.getElementById('player-hand-container');
             handContainer.innerHTML = "";
             let isP = (battleState.turnState === 'player');
@@ -410,7 +406,6 @@
                 handContainer.appendChild(div);
             });
 
-            // ボタン有効化判定
             document.getElementById('card-attack-btn').disabled = (!isP || battleState.playerEnergy < 3);
             document.getElementById('card-defend-btn').disabled = (!isP || battleState.playerEnergy < 1 || battleState.playerDefending);
             document.getElementById('card-heal-btn').disabled = (!isP || battleState.playerEnergy < 1 || battleState.playerHp === battleState.playerMaxHp);
@@ -431,7 +426,7 @@
                 updateBattleUI();
             } else if (type === 'heal' && battleState.playerEnergy >= 1) {
                 battleState.playerEnergy -= 1;
-                playSE('回復魔法2.mp3'); // 回復音追加
+                playSE('回復魔法2.mp3');
                 let cardPower = battleState.activeCard ? (battleState.activeCard.power || 30) : 30;
                 let healAmt = Math.floor(cardPower * 0.4);
                 battleState.playerHp = Math.min(battleState.playerMaxHp, battleState.playerHp + healAmt);
@@ -442,7 +437,7 @@
                 battleState.playerEnergy -= 1;
                 if (battleState.deck.length > 0) {
                     battleState.hand.push(battleState.deck.pop());
-                    playSE('カードをめくる.mp3'); // 山札を引く音追加
+                    playSE('カードをめくる.mp3');
                 }
                 logMsg(`📥 山札からカードを1枚引いた！`);
                 updateBattleUI();
@@ -464,7 +459,6 @@
             let cardPower = battleState.activeCard ? (battleState.activeCard.power || 30) : 30;
             let baseDmg = Math.floor(cardPower * (1 + Math.random() * 0.2));
             
-            // 10回に1回 (10%の確率) でクリティカルショット発動
             let isCritical = Math.random() < 0.1;
             let dmg = isCritical ? Math.floor(baseDmg * 1.5) : baseDmg;
 
@@ -473,7 +467,6 @@
                 battleState.enemyDefending = false; 
             }
             
-            // 攻撃音再生（通常 vs クリティカル）
             if (isCritical) {
                 playSE('高速斬撃1.mp3');
             } else {
@@ -535,17 +528,14 @@
             if (battleState.enemyEnergy >= 3) {
                 battleState.enemyEnergy -= 3;
                 
-                // 難易度設定に応じた攻撃力計算 (★:80前後, ★★:180前後, ★★★:250前後)
                 let baseAtk = battleState.enemyBaseAtk || 80;
                 let baseDmg = Math.floor(baseAtk * (0.9 + Math.random() * 0.2));
                 
-                // 敵の攻撃も10回に1回クリティカル判定
                 let isCritical = Math.random() < 0.1;
                 let enemyDmg = isCritical ? Math.floor(baseDmg * 1.5) : baseDmg;
 
                 if (battleState.playerDefending) enemyDmg = Math.floor(enemyDmg / 2);
                 
-                // 効果音再生
                 if (isCritical) {
                     playSE('高速斬撃1.mp3');
                 } else {
@@ -626,7 +616,7 @@
                 localStorage.setItem('coins', coins);
                 localStorage.setItem('packs', packs);
             } else { 
-                playSpecialBGM('lose.mp3');
+                playSpecialBGM('gameover.mp3');
                 resText.innerHTML = `💥 ぜんめつ…敗北しました`; 
             }
         }
