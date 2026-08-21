@@ -122,7 +122,7 @@
             </button>
         </div>
 
-        <button onclick="location.href='index.html'" style="background: #7f8fa6; box-shadow: 0 4px 0 #718093; margin-top:15px; font-size:17px; padding:12px 30px;">🏠 メニューにもどる</button>
+        <button onclick="location.href='menu.html'" style="background: #7f8fa6; box-shadow: 0 4px 0 #718093; margin-top:15px; font-size:17px; padding:12px 30px;">🏠 メニューにもどる</button>
     </div>
 
     <!-- バトル実行画面 -->
@@ -211,7 +211,7 @@
     <div id="battle-result-screen" class="screen" style="display:none;">
         <h2 style="color:#ff4757; margin:10px 0; font-size:28px;">⚔️ バトル結果 ⚔️</h2>
         <div id="battle-result-text" style="font-size: 20px; margin: 25px 0; font-weight: 900; line-height:1.6;"></div>
-        <button onclick="location.href='index.html'" style="background: #7f8fa6; box-shadow: 0 4px 0 #718093; font-size:18px; padding:12px 30px;">🏠 メニューへもどる</button>
+        <button onclick="location.href='menu.html'" style="background: #7f8fa6; box-shadow: 0 4px 0 #718093; font-size:18px; padding:12px 30px;">🏠 メニューへもどる</button>
     </div>
 
     <script>
@@ -391,7 +391,7 @@
         function abortBattle() {
             if (confirm("本当にバトルを途中でやめますか？")) {
                 stopBGM();
-                location.href = 'index.html';
+                location.href = 'menu.html';
             }
         }
 
