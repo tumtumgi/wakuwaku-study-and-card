@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>🏠 メニュー - わくわく学習＆カード</title>
+    <!-- Supabase関連 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase_client.js"></script>
+    <script src="js/data_manager.js"></script>
+    <script src="js/auth_controller.js"></script>
+    <!-- フォント -->
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            margin: 0; padding: 20px; color: #4a4a4a; text-align: center; min-height: 100vh;
+            transition: background 0.5s ease;
+        }
+        body.dark { background: linear-gradient(135deg, #1e272e 0%, #4bcffa 100%); }
+        body.pop { background: linear-gradient(135deg, #ff9ff3 0%, #feca57 100%); }
+
+        .screen {
+            background: rgba(255, 255, 255, 0.95); max-width: 600px; margin: 0 auto;
+            padding: 25px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+
+        #status-bar {
+            display: flex; justify-content: space-around; background: rgba(255, 255, 255, 0.9);
+            color: #2f3640; padding: 12px; border-radius: 20px; margin: 0 auto 20px auto;
+            max-width: 600px; font-size: 18px; font-weight: 900;
+        }
+
+        .menu-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .menu-btn {
+            border: none;
+            border-radius: 15px;
+            padding: 18px;
+            font-size: 18px;
+            font-weight: 900;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.1s, filter 0.2s;
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+        .menu-btn:active { transform: scale(0.98); }
+        .menu-btn:hover { filter: brightness(1.1); }
+
+        .btn-quiz { background: #ff9f43; box-shadow: 0 4px 0 #e67e22; }
+        .btn-pack { background: #1dd1a1; box-shadow: 0 4px 0 #10ac84; }
+        .btn-deck { background: #5f27cd; box-shadow: 0 4px 0 #341f97; }
+        .btn-pokedex { background: #54a0ff; box-shadow: 0 4px 0 #2e86de; }
+        .btn-shop { background: #ff9ff3; box-shadow: 0 4px 0 #ff6b81; }
+        .btn-battle { background: #ff6b6b; box-shadow: 0 4px 0 #ee5253; }
+
+        .settings-area { margin-top: 30px; padding-top: 20px; border-top: 2px dashed #ccc; }
+        .theme-btn { 
+            background: #7f8fa6; color: white; border: none; padding: 8px 16px;
+            border-radius: 20px; cursor: pointer; font-family: inherit; font-weight: bold;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body id="body-index">
+
+    <!-- 変更箇所：BGMのファイルパスとファイル名を更新しました -->
+    <audio id="bgm-player" src="bgm/The_Front_Porch.mp3" loop></audio>
+
+    <div id="status-bar">
+        <div>🪙 コイン: <span id="coin-display">0</span></div>
+        <div>📦 パック: <span id="pack-display">0</span>個</div>
+    </div>
+
+    <div class="screen">
+        <h1 style="color:#2f3542; margin-top:0;">🌟 わくわく学習＆カード</h1>
+        <p>今日は何をしようかな？</p>
+
+        <div class="menu-container">
+            <button class="menu-btn btn-quiz" onclick="location.href='quiz.html'">✏️ クイズに挑戦</button>
+            <button class="menu-btn btn-pack" onclick="location.href='pack.html'">📦 パック開封</button>
+            <button class="menu-btn btn-deck" onclick="location.href='deck.html'">🎴 デッキ編成</button>
+            <button class="menu-btn btn-pokedex" onclick="location.href='pokedex.html'">📖 カード図鑑</button>
+            <button class="menu-btn btn-shop" onclick="location.href='shop.html'">🛒 ショップ</button>
+            <button class="menu-btn btn-battle" onclick="location.href='battle.html'">⚔️ カードバトル</button>
+        </div>
+
+        <div class="settings-area">
+            <button id="theme-btn" class="theme-btn" onclick="toggleTheme()">背景：---</button>
+            <button id="bgm-btn" class="theme-btn" onclick="toggleBGM()">🎵 BGM: ON</button>
+            <button class="theme-btn" style="background:#ff4757;" onclick="logout()">🚪 ログアウト</button>
+        </div>
+    </div>
+
+    <script>
+        if (localStorage.getItem('coins') === null) localStorage.setItem('coins', '100');
+        if (localStorage.getItem('packs') === null) localStorage.setItem('packs', '1');
+        if (localStorage.getItem('theme') === null) localStorage.setItem('theme', 'dark');
+        if (localStorage.getItem('bgmEnabled') === null) localStorage.setItem('bgmEnabled', 'true');
+
+        document.getElementById('body-index').className = localStorage.getItem('theme');
+        
+        updateStatus();
+        updateThemeButtonText();
+        updateBGMButton();
+
+        window.addEventListener('pageshow', updateStatus);
+        window.addEventListener('focus', updateStatus);
+
+        // ユーザーの初回クリック時にBGMを再生（ブラウザの自動再生ブロック対策）
+        document.addEventListener('click', () => {
+            const bgm = document.getElementById('bgm-player');
+            if (localStorage.getItem('bgmEnabled') === 'true' && bgm.paused) {
+                bgm.play().catch(e => console.log(e));
+            }
+        }, { once: true });
+
+        // 設定がONであれば読み込み時に再生を試みる
+        if (localStorage.getItem('bgmEnabled') === 'true') {
+            const bgm = document.getElementById('bgm-player');
+            bgm.play().catch(() => {});
+        }
+
+        function updateStatus() {
+            const coins = localStorage.getItem('coins') || '0';
+            const packs = localStorage.getItem('packs') || '0';
+            document.getElementById('coin-display').innerText = coins;
+            document.getElementById('pack-display').innerText = packs;
+        }
+
+        function updateThemeButtonText() {
+            const currentTheme = localStorage.getItem('theme');
+            const themeLabel = (currentTheme === 'dark') ? 'ダーク' : 'ポップ';
+            document.getElementById('theme-btn').innerText = `背景：${themeLabel}`;
+        }
+
+        function toggleTheme() {
+            const body = document.getElementById('body-index');
+            const newTheme = body.className === 'dark' ? 'pop' : 'dark';
+            body.className = newTheme;
+            localStorage.setItem('theme', newTheme);
+            updateThemeButtonText();
+        }
+
+        // BGMのオンオフ切り替え
+        function toggleBGM() {
+            const bgm = document.getElementById('bgm-player');
+            const isEnabled = localStorage.getItem('bgmEnabled') === 'true';
+            if (isEnabled) {
+                localStorage.setItem('bgmEnabled', 'false');
+                bgm.pause();
+            } else {
+                localStorage.setItem('bgmEnabled', 'true');
+                bgm.play();
+            }
+            updateBGMButton();
+        }
+
+        // BGMボタンの表示更新
+        function updateBGMButton() {
+            const isEnabled = localStorage.getItem('bgmEnabled') === 'true';
+            document.getElementById('bgm-btn').innerText = isEnabled ? '🎵 BGM: ON' : '🔇 BGM: OFF';
+        }
+
+        async function logout() {
+            if(confirm("ログアウトしますか？")) {
+                if (typeof AuthController !== 'undefined' && typeof AuthController.logout === 'function') {
+                    await AuthController.logout();
+                }
+                window.location.href = 'login.html';
+            }
+        }
+    </script>
+</body>
+</html>
