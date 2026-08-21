@@ -333,28 +333,19 @@
             setTimeout(() => el.classList.remove(className), duration);
         }
 
+        // 2. startCardBattle 関数の一部を修正
+        // 初期化時に playerHp を固定値(100)にせず、undefined にしてカード固有のHPを適用させます
         function startCardBattle(diffKey) {
-            if (diffKey === 'boss') {
-                let btn = document.getElementById('boss-diff-btn');
-                if (btn && btn.dataset.unlocked !== "true") {
-                    alert("カードが全種類集まると、挑めます。");
-                    return;
-                }
-            }
-
+            /* --- 前半部分は変更なし --- */
+            if (diffKey === 'boss') { /* ... */ }
             let config = DIFFICULTY_SETTINGS[diffKey] || DIFFICULTY_SETTINGS.easy;
             let requiredCards = (diffKey === 'easy') ? 1 : (diffKey === 'normal') ? 2 : 3;
-
-            if (!activeDeck || activeDeck.length < requiredCards) {
-                alert(`「${config.name}」に挑戦するには、デッキでカードを ${requiredCards} 枚以上選択してください！\n（現在のデッキ枚数: ${activeDeck ? activeDeck.length : 0}枚）`);
-                return;
-            }
-
+            if (!activeDeck || activeDeck.length < requiredCards) { /* ... */ return; }
             let currentDeck = activeDeck.slice(0, requiredCards);
 
             document.getElementById('battle-prep-screen').style.display = 'none';
             document.getElementById('battle-action-screen').style.display = 'block';
-            
+    
             document.getElementById('enemy-name').innerText = config.enemyName || '怪獣';
             document.getElementById('enemy-icon').innerText = config.enemyIcon || '🦖';
 
@@ -374,14 +365,15 @@
                 hand: [], 
                 activeCard: null,
                 playerMaxHp: 100, 
-                playerHp: 100, 
+                playerHp: undefined, // 修正: 100ではなく undefined にする
                 playerEnergy: 3, 
                 playerDefending: false,
                 turnState: 'player'
             };
 
-            setCardToActive(battleState.deck.pop());
-            
+            // 修正: バトル開始時は「新規登場(true)」としてセット
+            setCardToActive(battleState.deck.pop(), true);
+    
             document.getElementById('battle-turn-indicator').innerText = "▶ あなたのターン！";
             document.getElementById('battle-turn-indicator').style.color = "#7bed9f";
             logMsg(`⚔️ バトル開始！ 最初のターンです。`);
@@ -395,22 +387,24 @@
             }
         }
 
-        function setCardToActive(cardId) {
+        // 1. setCardToActive 関数を修正
+        // 第2引数(isNewSpawn)を追加し、新品で場に出るのか、引き継ぎ(自発的交代)なのかを判定します
+        function setCardToActive(cardId, isNewSpawn = false) {
             let cId = (typeof cardId === 'object') ? cardId.id : cardId;
             let rawCard = (typeof MASTER_CARDS !== 'undefined') ? MASTER_CARDS.find(c => c.id === cId) : null;
             if (!rawCard) rawCard = { id: cId, name: 'カード', icon: '🃏', power: 30 };
-    
+
             battleState.activeCard = { ...rawCard };
             let powerVal = rawCard.power || 30;
             battleState.playerMaxHp = 60 + Math.floor(powerVal * 0.8);
-    
-            // 修正: バトル開始時のみHPを回復し、交代時は上限超過分のみ調整する
-            if (battleState.playerHp === undefined) {
+
+            // 修正: 新規登場時(バトル開始・気絶後)はHPを全回復。自発的な交代時のみ上限調整を行う。
+            if (isNewSpawn || battleState.playerHp === undefined) {
                 battleState.playerHp = battleState.playerMaxHp;
             } else {
                 battleState.playerHp = Math.min(battleState.playerHp, battleState.playerMaxHp);
             }
-    
+
             battleState.playerDefending = false;
 
             triggerAnim('player-card', 'anim-swap', 350);
@@ -493,12 +487,15 @@
             }
         }
 
+        // 4. switchCardFromHand 関数を修正
+        // 手札から自発的に交代した場合は「引き継ぎ(false)」としてセットします
         function switchCardFromHand(idx) {
             if (battleState.turnState !== 'player') return;
             battleState.playerEnergy -= 1;
             let newId = battleState.hand.splice(idx, 1)[0];
             battleState.hand.push(battleState.activeCard.id);
-            setCardToActive(newId);
+            // 修正: 自発的な交代は引き継ぎ(false)を明示する
+            setCardToActive(newId, false);
             logMsg(`🔄 ${battleState.activeCard.name} に交代した！`);
             updateBattleUI();
         }
@@ -617,6 +614,8 @@
             }
         }
 
+        // 3. checkPlayerStatus 関数を修正
+        // 気絶後に次のカードを出す際、HPを全快(新規登場扱い)で出撃させます
         function checkPlayerStatus() {
             if (battleState.playerHp <= 0) {
                 playSE('down.mp3');
@@ -624,13 +623,12 @@
                 setTimeout(() => {
                     if (battleState.hand.length > 0) {
                         let nextCardId = battleState.hand.shift();
-                        setCardToActive(nextCardId);
+                        setCardToActive(nextCardId, true); // 修正: trueを追加してHP満タンで復活させる
                         logMsg(`🔄 つぎのカード「${battleState.activeCard.name}」をくりだした！`);
                         setTimeout(() => startPlayerTurn(), 1000);
                     } else if (battleState.deck.length > 0) {
-                        // 修正: 手札がなくても山札がある場合は山札から出す
                         let nextCardId = battleState.deck.shift();
-                        setCardToActive(nextCardId);
+                        setCardToActive(nextCardId, true); // 修正: trueを追加してHP満タンで復活させる
                         logMsg(`🔄 山札からカード「${battleState.activeCard.name}」をくりだした！`);
                         setTimeout(() => startPlayerTurn(), 1000);
                     } else { 
@@ -641,8 +639,6 @@
                 setTimeout(() => startPlayerTurn(), 1200); 
             }
         }
-
-
 
         function startPlayerTurn() {
             battleState.turnState = 'player';
