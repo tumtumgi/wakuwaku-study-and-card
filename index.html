@@ -126,7 +126,7 @@
             }
             try {
                 const { error } = await sbClient.auth.resetPasswordForEmail(email, {
-                    redirectTo: window.location.origin + '/update-password.html'
+                    redirectTo: window.location.href.replace('login.html', 'update-password.html')
                 });
                 if (error) throw error;
                 messageEl.style.color = '#4CAF50';

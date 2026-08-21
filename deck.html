@@ -94,6 +94,9 @@
                 if (targetIndex !== undefined) {
                     const cardId = playerCollection[targetIndex];
                     const card = MASTER_CARDS.find(item => item.id === cardId);
+
+                    // 追加: 万が一データが見つからなかった場合はエラーを回避する
+                    if (!card) continue;
                     
                     const isOver = i >= 3;
                     slotDiv.className = `slot-card filled ${isOver ? 'over' : ''}`;

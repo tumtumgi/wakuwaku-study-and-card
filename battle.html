@@ -399,11 +399,18 @@
             let cId = (typeof cardId === 'object') ? cardId.id : cardId;
             let rawCard = (typeof MASTER_CARDS !== 'undefined') ? MASTER_CARDS.find(c => c.id === cId) : null;
             if (!rawCard) rawCard = { id: cId, name: 'カード', icon: '🃏', power: 30 };
-            
+    
             battleState.activeCard = { ...rawCard };
             let powerVal = rawCard.power || 30;
             battleState.playerMaxHp = 60 + Math.floor(powerVal * 0.8);
-            battleState.playerHp = battleState.playerMaxHp;
+    
+            // 修正: バトル開始時のみHPを回復し、交代時は上限超過分のみ調整する
+            if (battleState.playerHp === undefined) {
+                battleState.playerHp = battleState.playerMaxHp;
+            } else {
+                battleState.playerHp = Math.min(battleState.playerHp, battleState.playerMaxHp);
+            }
+    
             battleState.playerDefending = false;
 
             triggerAnim('player-card', 'anim-swap', 350);
@@ -620,6 +627,12 @@
                         setCardToActive(nextCardId);
                         logMsg(`🔄 つぎのカード「${battleState.activeCard.name}」をくりだした！`);
                         setTimeout(() => startPlayerTurn(), 1000);
+                    } else if (battleState.deck.length > 0) {
+                        // 修正: 手札がなくても山札がある場合は山札から出す
+                        let nextCardId = battleState.deck.shift();
+                        setCardToActive(nextCardId);
+                        logMsg(`🔄 山札からカード「${battleState.activeCard.name}」をくりだした！`);
+                        setTimeout(() => startPlayerTurn(), 1000);
                     } else { 
                         endBattle(false); 
                     }
@@ -628,6 +641,8 @@
                 setTimeout(() => startPlayerTurn(), 1200); 
             }
         }
+
+
 
         function startPlayerTurn() {
             battleState.turnState = 'player';
