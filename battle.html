@@ -223,12 +223,12 @@
             hard:   { name: 'つよい',   enemyHp: 540, enemyBaseAtk: 120, enemyDeckSize: 3, rewardCoins: 200, rewardPacks: 2 }
         };
 
-        // 効果音（SE）再生関数
+        // 効果音（SE）再生関数（日本語ファイル名エンコード対応）
         function playSE(filename) {
             try {
-                let se = new Audio('bgm/' + filename);
+                let se = new Audio('bgm/' + encodeURI(filename));
                 se.currentTime = 0;
-                se.play().catch(e => console.log("SE再生エラー:", e));
+                se.play().catch(e => console.log("SE再生エラー:", filename, e));
             } catch(e) {
                 console.log("SEエラー:", e);
             }
@@ -272,7 +272,7 @@
         function playSpecialBGM(filename) {
             stopBGM();
             if (!bgmOn) return;
-            let spAudio = new Audio('bgm/' + filename);
+            let spAudio = new Audio('bgm/' + encodeURI(filename));
             spAudio.play().catch(err => console.log("特殊BGM再生エラー:", err));
             activeAudio = spAudio;
         }
@@ -431,7 +431,7 @@
                 updateBattleUI();
             } else if (type === 'heal' && battleState.playerEnergy >= 1) {
                 battleState.playerEnergy -= 1;
-                playSE('回復魔法2.mp3'); // 回復音追加
+                playSE('回復魔法2.mp3'); // 回復音
                 let cardPower = battleState.activeCard ? (battleState.activeCard.power || 30) : 30;
                 let healAmt = Math.floor(cardPower * 0.4);
                 battleState.playerHp = Math.min(battleState.playerMaxHp, battleState.playerHp + healAmt);
@@ -442,7 +442,7 @@
                 battleState.playerEnergy -= 1;
                 if (battleState.deck.length > 0) {
                     battleState.hand.push(battleState.deck.pop());
-                    playSE('カードをめくる.mp3'); // 山札を引く音追加
+                    playSE('カードをめくる.mp3'); // 山札を引く音
                 }
                 logMsg(`📥 山札からカードを1枚引いた！`);
                 updateBattleUI();
@@ -491,6 +491,7 @@
                 let critMsg = isCritical ? "⚡【クリティカルヒット！】" : "";
 
                 if (battleState.enemyHp <= 0) {
+                    playSE('倒れる.mp3'); // 敵撃破時の効果音追加
                     if (battleState.enemyDeckCount > 1) {
                         battleState.enemyDeckCount--;
                         logMsg(`🔥 てきに ${dmg} のダメージ！ ${critMsg} てきをたおした！ つぎのてきがあらわれた！`);
@@ -579,6 +580,7 @@
 
         function checkPlayerStatus() {
             if (battleState.playerHp <= 0) {
+                playSE('倒れる.mp3'); // プレイヤーカードきぜつ時の効果音追加
                 logMsg(`💥 カードがきぜつしてしまった…！`);
                 setTimeout(() => {
                     if (battleState.hand.length > 0) {
